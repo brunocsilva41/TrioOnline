@@ -10,7 +10,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - fromDatabase:
+      - key: DATABASE_URL # CORREÇÃO: Adicionada a chave para mapear o banco
+        fromDatabase:
           name: trinity-db
           property: connectionString
       - key: REDIS_URL
@@ -30,11 +31,11 @@ services:
     startCommand: pnpm run start --filter game-client
     envVars:
       - key: NEXT_PUBLIC_GAME_SERVER_URL
-        value: https://trinity-server.onrender.com # Ajustar após o primeiro deploy
+        value: https://trinity-server.onrender.com
       - key: NODE_ENV
         value: production
 
-  # Redis (Movido para dentro do bloco services único)
+  # Redis Service
   - type: redis
     name: trinity-redis
     plan: free
