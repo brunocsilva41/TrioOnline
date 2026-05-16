@@ -1,0 +1,46 @@
+services:
+  # Game Server (Colyseus + Node.js)
+  - type: web
+    name: trinity-server
+    env: node
+    plan: free
+    buildCommand: pnpm install && pnpm run build --filter game-server
+    startCommand: pnpm run start --filter game-server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - fromDatabase:
+          name: trinity-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: trinity-redis
+          property: connectionString
+      - key: PORT
+        value: 10000
+
+  # Game Client (Next.js PWA)
+  - type: web
+    name: trinity-client
+    env: node
+    plan: free
+    buildCommand: pnpm install && pnpm run build --filter game-client
+    startCommand: pnpm run start --filter game-client
+    envVars:
+      - key: NEXT_PUBLIC_GAME_SERVER_URL
+        value: https://trinity-server.onrender.com # Ajustar após o primeiro deploy
+      - key: NODE_ENV
+        value: production
+
+databases:
+  - name: trinity-db
+    plan: free
+    databaseName: trinity
+
+services:
+  - type: redis
+    name: trinity-redis
+    plan: free
+    ipAllowList: [] # Permite conexões apenas de serviços internos do Render
