@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  auth_provider   String   // 'google', 'apple', 'guest'
+  provider_id     String   @unique
+  username        String   @unique
+  avatar_url      String?
+  
+  // ELO & Matchmaking (Atualizado via background jobs)
+  mmr_rating      Float    @default(1500.0)
+  mmr_rd          Float    @default(350.0)
+  mmr_volatility  Float    @default(0.06)
+  
+  // Economy
+  t_coins         Int      @default(0)
+  gems            Int      @default(0)
+  
+  // Relations
+  matches         MatchPlayer[]
+  inventory       Inventory[]
+  sent_friend_requests     FriendRequest[] @relation("SentRequests")
+  received_friend_requests FriendRequest[] @relation("ReceivedRequests")
+  friendships_1            Friendship[]    @relation("Friendships1")
+  friendships_2            Friendship[]    @relation("Friendships2")
+  logins                   UserLogin[]
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([mmr_rating])
+}
+
+model UserLogin {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id   String   @db.Uuid
+  logged_at DateTime @default(now())
+
+  user      User     @relation(fields: [user_id], references: [id])
+
+  @@index([user_id, logged_at])
+  @@index([logged_at])
+}
+
+model Friendship {
+  user_id_1       String   @db.Uuid
+  user_id_2       String   @db.Uuid
+  created_at      DateTime @default(now())
+
+  user_1          User     @relation("Friendships1", fields: [user_id_1], references: [id])
+  user_2          User     @relation("Friendships2", fields: [user_id_2], references: [id])
+
+  @@id([user_id_1, user_id_2])
+}
+
+model FriendRequest {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sender_id       String   @db.Uuid
+  receiver_id     String   @db.Uuid
+  status          String   @default("PENDING") // 'PENDING', 'ACCEPTED', 'DECLINED'
+  created_at      DateTime @default(now())
+
+  sender          User     @relation("SentRequests", fields: [sender_id], references: [id])
+  receiver        User     @relation("ReceivedRequests", fields: [receiver_id], references: [id])
+
+  @@unique([sender_id, receiver_id])
+}
+
+model Match {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  game_mode       String   // 'CLASSIC', 'SPICY'
+  status          String   // 'COMPLETED', 'ABORTED_BY_SERVER'
+  started_at      DateTime
+  ended_at        DateTime
+  
+  // Action Log comprimido no S3 para Replays e Anti-Cheat audits.
+  // Evita inchar o banco SQL com arrays JSON gigantes de milhares de turnos.
+  replay_s3_key   String?  
+  
+  players         MatchPlayer[]
+}
+
+model MatchPlayer {
+  match_id        String   @db.Uuid
+  user_id         String   @db.Uuid
+  placement       Int      // 1 (Winner), 2, 3, 4
+  elo_delta       Float    // Ex: +15.5
+  
+  match           Match    @relation(fields: [match_id], references: [id])
+  user            User     @relation(fields: [user_id], references: [id])
+
+  @@id([match_id, user_id])
+}
+
+model Cosmetic {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type            String   // 'CARD_BACK', 'EMOTE', 'TABLE_SKIN', 'VFX'
+  name            String
+  rarity          String   // 'COMMON', 'EPIC', 'LEGENDARY'
+  
+  inventory       Inventory[]
+}
+
+model Inventory {
+  user_id         String   @db.Uuid
+  cosmetic_id     String   @db.Uuid
+  is_equipped     Boolean  @default(false)
+  acquired_at     DateTime @default(now())
+  
+  user            User     @relation(fields: [user_id], references: [id])
+  cosmetic        Cosmetic @relation(fields: [cosmetic_id], references: [id])
+
+  @@id([user_id, cosmetic_id])
+}

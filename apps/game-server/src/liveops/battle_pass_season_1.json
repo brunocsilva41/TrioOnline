@@ -1,0 +1,25 @@
+{
+  "seasonId": "season_1",
+  "name": "First Trio Season",
+  "tiers": [
+    {
+      "level": 1,
+      "xpRequired": 0,
+      "freeReward": { "type": "T_COINS", "amount": 100 },
+      "premiumReward": { "type": "COSMETIC", "id": "card_back_silver" }
+    },
+    {
+      "level": 2,
+      "xpRequired": 1000,
+      "freeReward": { "type": "COSMETIC", "id": "emote_wave" },
+      "premiumReward": { "type": "GEMS", "amount": 50 }
+    },
+    {
+      "level": 3,
+      "xpRequired": 2500,
+      "freeReward": null,
+      "premiumReward": { "type": "COSMETIC", "id": "table_neon" }
+    }
+  ],
+  "premiumCostGems": 0
+}

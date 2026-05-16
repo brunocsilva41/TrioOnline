@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: game-server
+  namespace: ns-game-servers
+  labels:
+    app: game-server
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: game-server
+  template:
+    metadata:
+      labels:
+        app: game-server
+    spec:
+      terminationGracePeriodSeconds: 900
+      containers:
+      - name: game-server
+        image: trioonline/game-server:latest
+        ports:
+        - containerPort: 2567
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: database-url
+        - name: REDIS_URL
+          value: "redis://trio-redis:6379"
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "node ./apps/game-server/src/scripts/graceful-shutdown.js"]
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 2567
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 2567
+          initialDelaySeconds: 15
+          periodSeconds: 20
