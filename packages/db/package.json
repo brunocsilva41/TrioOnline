@@ -1,0 +1,16 @@
+{
+  "name": "db",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@prisma/client": "latest"
+  },
+  "devDependencies": {
+    "prisma": "latest"
+  }
+}
