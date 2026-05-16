@@ -34,13 +34,13 @@ services:
       - key: NODE_ENV
         value: production
 
+  # Redis (Movido para dentro do bloco services único)
+  - type: redis
+    name: trinity-redis
+    plan: free
+    ipAllowList: [] 
+
 databases:
   - name: trinity-db
     plan: free
     databaseName: trinity
-
-services:
-  - type: redis
-    name: trinity-redis
-    plan: free
-    ipAllowList: [] # Permite conexões apenas de serviços internos do Render
