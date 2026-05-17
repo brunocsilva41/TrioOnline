@@ -4,13 +4,13 @@ services:
     name: trinity-server
     env: node
     plan: free
-    buildCommand: pnpm install && pnpm run build --filter game-server
-    startCommand: pnpm run start --filter game-server
+    buildCommand: pnpm install && pnpm run build --filter @trinity/core-engine && pnpm run build --filter game-server
+    startCommand: node apps/game-server/dist/index.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_URL # CORREÇÃO: Adicionada a chave para mapear o banco
+      - key: DATABASE_URL
         fromDatabase:
           name: trinity-db
           property: connectionString
@@ -22,24 +22,24 @@ services:
       - key: PORT
         value: 10000
 
-  # Game Client (Next.js PWA)
+  # Game Client (Next.js)
   - type: web
     name: trinity-client
     env: node
     plan: free
     buildCommand: pnpm install && pnpm run build --filter game-client
-    startCommand: pnpm run start --filter game-client
+    startCommand: pnpm --filter game-client start
     envVars:
       - key: NEXT_PUBLIC_GAME_SERVER_URL
         value: https://trinity-server.onrender.com
       - key: NODE_ENV
         value: production
 
-  # Redis Service
+  # Redis
   - type: redis
     name: trinity-redis
     plan: free
-    ipAllowList: [] 
+    ipAllowList: []
 
 databases:
   - name: trinity-db

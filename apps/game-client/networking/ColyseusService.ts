@@ -8,8 +8,10 @@ import { useGameStore, PlayerData, CardData, AppPhase } from "../store/useGameSt
  * and real-time state synchronization with Zustand store.
  */
 
-const SERVER_URL = process.env.NEXT_PUBLIC_GAME_SERVER_URL || "ws://localhost:2567";
-const HTTP_URL = SERVER_URL.replace("ws://", "http://").replace("wss://", "https://");
+// Accept any URL format (https://, wss://, ws://, http://) and derive both WS and HTTP
+const RAW_URL = (process.env.NEXT_PUBLIC_GAME_SERVER_URL || "ws://localhost:2567").replace(/\/$/, "");
+const SERVER_URL = RAW_URL.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
+const HTTP_URL = RAW_URL.replace(/^wss:\/\//, "https://").replace(/^ws:\/\//, "http://");
 
 const SESSION_KEY = "trinity_session";
 
