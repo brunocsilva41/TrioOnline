@@ -7,20 +7,26 @@ import { TrioRoom } from "./rooms/TrioRoom";
 const port = Number(process.env.PORT || 2567);
 const app = express();
 
-app.use(express.json());
-app.use((_req: any, res: any, next: any) => {
+// CORS — must be BEFORE everything else, including Colyseus matchmake routes
+app.use((_req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    if (_req.method === "OPTIONS") {
+        res.sendStatus(200);
+        return;
+    }
     next();
 });
 
-// Health check endpoint
+app.use(express.json());
+
+// Health check
 app.get("/health", (_req, res) => {
     res.json({ status: "ok", uptime: process.uptime() });
 });
 
-// Room listing endpoint (public rooms only)
+// Room listing (public rooms)
 app.get("/rooms", async (_req, res) => {
     try {
         const rooms = await matchMaker.query({ name: "trio_room", private: false });
@@ -37,11 +43,10 @@ app.get("/rooms", async (_req, res) => {
     }
 });
 
-// Join by code endpoint
+// Join by code
 app.post("/join-by-code", async (req, res) => {
     const { code } = req.body;
     if (!code) return res.status(400).json({ error: "Code required" });
-
     try {
         const rooms = await matchMaker.query({ name: "trio_room" });
         const match = rooms.find(r => r.metadata?.roomCode === code.toUpperCase());
@@ -60,11 +65,9 @@ const gameServer = new Server({
     transport: new WebSocketTransport({ server }),
 });
 
-// Register room type with filtering for lobby
 gameServer.define("trio_room", TrioRoom)
     .enableRealtimeListing();
 
 server.listen(port, () => {
-    console.log(`[Trinity] Game server listening on ws://localhost:${port}`);
-    console.log(`[Trinity] HTTP API on http://localhost:${port}`);
+    console.log(`[Trinity] Game server on ws://localhost:${port}`);
 });
