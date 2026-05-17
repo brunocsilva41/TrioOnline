@@ -9,20 +9,23 @@ Toda interação no Framer Motion e no Web Audio API deve obedecer estas constan
 ### 2.1. Ação: Escolher uma Carta (Card Hover & Select)
 - **Hover Delay:** `0ms`. Imediato. A carta sobe 5px.
 - **Select Haptic:** Vibrar motor Taptic em `light` mode.
-- **Dopamine Goal:** Controle e responsividade absoluta.
+- **Tension Phase:** Ao confirmar a escolha, o fundo deve escurecer (`opacity: 0.3`) e o alvo deve ser destacado com um glow pulsante.
+- **Dopamine Goal:** Controle e responsividade absoluta, transicionando para foco total no alvo.
 
-### 2.2. Ação: Revelar Carta do Inimigo (Suspense)
+### 2.2. Ação: Revelar Carta (The Reveal Tension)
 A revelação nunca é instantânea. O cérebro precisa antecipar.
-- **Fase 1 (Tensão):** A carta treme no lugar por `350ms`. Efeito de som: Fricção crescendo (Riser pitch).
-- **Fase 2 (Flip):** Duração de `200ms` usando easing `cubic-bezier(0.17, 0.67, 0.83, 0.67)`.
-- **Fase 3 (Leitura):** Congela por `400ms` (Tempo médio para processamento cognitivo de um número por um adulto).
+- **Fase 1 (Deep Tension):** A carta treme violentamente (heavy vibration) e a "câmera" (UI) sofre micro-shakes. Duração: `600ms`.
+- **Fase 2 (Suspense Delay):** Um breve congelamento de `150ms` no pico da vibração antes do flip.
+- **Fase 3 (High-Glow Flip):** Duração de `400ms`. Durante o flip, a carta emite um flare/glow intenso e sofre um micro-zoom (`scale: 1.2`).
+- **Fase 4 (Leitura):** Congela por `400ms`.
 - **Dopamine Goal:** Slot-machine effect. A expectativa é mais viciante que a revelação em si.
 
 ### 2.3. Ação: Formar um TRIO (The Jackpot)
-- **Fase 1 (Impacto):** Time scale congela brevemente (Hit-stop de `100ms`). Som estala.
-- **Fase 2 (Convergence):** Cartas viajam para o centro (`duration: 600ms`, `type: spring`, `stiffness: 100`).
-- **Fase 3 (Explosion):** Partículas explodem. Vibração `Heavy`. UI exibe Banner Neon. Som Ascendente Majestoso.
-- **Cooldown:** `1200ms` obrigatórios de bloqueio de UI para forçar o jogador a "apreciar" o momento antes de seguir jogando.
+- **Fase 1 (Impacto):** Time scale congela brevemente (Hit-stop de `200ms`). Som explosivo (Heavy Bass).
+- **Fase 2 (Slow Motion Convergence):** Cartas viajam para o centro em slow motion (`duration: 1200ms`, `type: spring`, `stiffness: 40`).
+- **Fase 3 (Massive Explosion):** Partículas massivas, shake de tela violento. UI exibe Banner Neon. Som Ascendente Majestoso.
+- **Cooldown:** `1500ms` obrigatórios de bloqueio de UI para forçar o jogador a "apreciar" o momento.
+- **Dopamine Goal:** Catarse total. Recompensa visual e auditiva proporcional à dificuldade.
 
 ### 2.4. Ação: Errar a Sequência (The Thud)
 - **Fase 1 (Processamento):** UI espera `600ms`. O jogador precisa perceber que errou.

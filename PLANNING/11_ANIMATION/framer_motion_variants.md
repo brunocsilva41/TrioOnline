@@ -28,11 +28,43 @@ const cardVariants = {
   fail_thud: {
     rotateY: 180, scale: 1, zIndex: 1, y: [0, 20, 0],
     transition: { type: "spring", stiffness: 400, damping: 10 }
+  },
+  // CINEMATIC & DEAL VARIANTS
+  cinematic_deal: (i: number) => ({
+    x: [Math.random() * 1000 - 500, 0],
+    y: [Math.random() * 1000 + 500, 0],
+    rotateZ: Math.random() * 20 - 10,
+    rotateY: [180, 180], // Start face down
+    scale: [0.5, 1],
+    opacity: [0, 1],
+    z: [500, 0],
+    transition: {
+      delay: i * 0.03 + 0.5, // Suspense delay
+      duration: 0.8,
+      ease: "easeOut",
+      type: "spring",
+      stiffness: 100,
+      damping: 12
+    }
+  }),
+  lobby_exit: {
+    opacity: 0,
+    scale: 1.2,
+    filter: "blur(20px)",
+    transition: { duration: 0.8, ease: "easeInOut" }
   }
 }
 ```
 
-## 3. DEPENDÊNCIAS
+## 3. CINEMATIC UX: THE DEAL
+A fase de Deal (Distribuição) utiliza o padrão `Stagger` para criar a percepção de cartas sendo arremessadas sobre o feltro da mesa.
+
+### 3.1. Propriedades de Renderização (Casino Feel)
+- **Motion Blur:** Simulado via `filter: blur(calc(var(--velocity) * 1px))` se a GPU permitir.
+- **Dynamic Shadows:** `box-shadow` que aumenta proporcionalmente ao `z` (depth).
+- **Randomness:** Cada carta possui um `rotateZ` e `offset` único para evitar o visual "grid perfeito" antes do alinhamento final.
+
+## 4. DEPENDÊNCIAS
 - **Inputs:** Flag `isRevealed` e `isTrioFormed` vindas do Zustand Global Store.
 - **Outputs:** Modificações no Virtual DOM (via GPU Canvas `will-change: transform`).
 
