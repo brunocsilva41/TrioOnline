@@ -8,7 +8,7 @@
  * This class is strictly deterministic and follows the Tick-based timing Law.
  */
 
-export enum GameState {
+export enum MatchPhase {
   WAITING_PLAYERS = "WAITING_PLAYERS",
   DEALING_CARDS = "DEALING_CARDS",
   PLAYER_TURN_IDLE = "PLAYER_TURN_IDLE",
@@ -33,7 +33,7 @@ export interface GameAction {
 }
 
 export class TurnStateMachine {
-  private currentState: GameState = GameState.WAITING_PLAYERS;
+  private currentState: MatchPhase = MatchPhase.WAITING_PLAYERS;
   private isProcessingAction: boolean = false;
   private currentTick: number = 0;
   private expirationTick: number = 0;
@@ -41,7 +41,7 @@ export class TurnStateMachine {
   private tickRate: number; // Ticks per second (Default: 20 ticks = 1 second)
 
   // Callbacks for external systems (Colyseus Room, Logger, etc.)
-  public onStateChange: (state: GameState, tick: number) => void = () => {};
+  public onStateChange: (state: MatchPhase, tick: number) => void = () => {};
   public onEmitEvent: (event: string, payload?: any) => void = () => {};
 
   /**
@@ -89,51 +89,51 @@ export class TurnStateMachine {
     }
 
     switch (this.currentState) {
-      case GameState.WAITING_PLAYERS:
+      case MatchPhase.WAITING_PLAYERS:
         if (action.type === "START_GAME") {
-          this.transitionTo(GameState.DEALING_CARDS);
+          this.transitionTo(MatchPhase.DEALING_CARDS);
         }
         break;
 
-      case GameState.DEALING_CARDS:
+      case MatchPhase.DEALING_CARDS:
         if (action.type === "FINISH_DEALING") {
-          this.transitionTo(GameState.PLAYER_TURN_IDLE);
+          this.transitionTo(MatchPhase.PLAYER_TURN_IDLE);
         }
         break;
 
-      case GameState.PLAYER_TURN_IDLE:
+      case MatchPhase.PLAYER_TURN_IDLE:
         if (action.type === "ACTION_REVEAL") {
-          this.transitionTo(GameState.PLAYER_TURN_REVEAL_1);
+          this.transitionTo(MatchPhase.PLAYER_TURN_REVEAL_1);
         }
         break;
 
-      case GameState.PLAYER_TURN_REVEAL_1:
+      case MatchPhase.PLAYER_TURN_REVEAL_1:
         if (action.type === "ACTION_REVEAL") {
-          this.transitionTo(GameState.PLAYER_TURN_REVEAL_2);
+          this.transitionTo(MatchPhase.PLAYER_TURN_REVEAL_2);
         }
         break;
 
-      case GameState.PLAYER_TURN_REVEAL_2:
+      case MatchPhase.PLAYER_TURN_REVEAL_2:
         if (action.type === "ACTION_REVEAL") {
-          this.transitionTo(GameState.EVALUATING_BOARD);
+          this.transitionTo(MatchPhase.EVALUATING_BOARD);
           this.onEmitEvent("EVALUATION_START");
         }
         break;
 
-      case GameState.EVALUATING_BOARD:
+      case MatchPhase.EVALUATING_BOARD:
         if (action.type === "EVALUATION_COMPLETE") {
-          this.transitionTo(GameState.TURN_TRANSITION_COOLDOWN);
+          this.transitionTo(MatchPhase.TURN_TRANSITION_COOLDOWN);
         }
         break;
 
-      case GameState.TURN_TRANSITION_COOLDOWN:
+      case MatchPhase.TURN_TRANSITION_COOLDOWN:
         if (action.type === "COOLDOWN_COMPLETE") {
           // In a real scenario, we'd check win conditions here.
-          this.transitionTo(GameState.PLAYER_TURN_IDLE);
+          this.transitionTo(MatchPhase.PLAYER_TURN_IDLE);
         }
         break;
 
-      case GameState.GAME_OVER:
+      case MatchPhase.GAME_OVER:
         // Terminal state.
         break;
     }
@@ -146,32 +146,32 @@ export class TurnStateMachine {
   /**
    * Internal transition helper that sets deterministic timeouts (Bible Law II).
    */
-  private transitionTo(nextState: GameState): void {
+  private transitionTo(nextState: MatchPhase): void {
     this.currentState = nextState;
 
     switch (nextState) {
-      case GameState.PLAYER_TURN_IDLE:
+      case MatchPhase.PLAYER_TURN_IDLE:
         // Happy Path 1: 15s timer
         this.expirationTick = this.currentTick + (15 * this.tickRate);
         break;
 
-      case GameState.PLAYER_TURN_REVEAL_1:
-      case GameState.PLAYER_TURN_REVEAL_2:
+      case MatchPhase.PLAYER_TURN_REVEAL_1:
+      case MatchPhase.PLAYER_TURN_REVEAL_2:
         // Happy Path 3 & 5: 10s timer
         this.expirationTick = this.currentTick + (10 * this.tickRate);
         break;
 
-      case GameState.TURN_TRANSITION_COOLDOWN:
+      case MatchPhase.TURN_TRANSITION_COOLDOWN:
         // Cooldown: 1200ms
         this.expirationTick = this.currentTick + Math.floor(1.2 * this.tickRate);
         break;
 
-      case GameState.DEALING_CARDS:
+      case MatchPhase.DEALING_CARDS:
         // Risco 3: Hard fallback for transitions (5s)
         this.expirationTick = this.currentTick + (5 * this.tickRate);
         break;
 
-      case GameState.EVALUATING_BOARD:
+      case MatchPhase.EVALUATING_BOARD:
         // Risco 3: Hard fallback for evaluation (3s)
         this.expirationTick = this.currentTick + (3 * this.tickRate);
         break;
@@ -196,19 +196,19 @@ export class TurnStateMachine {
    */
   private handleTimeout(): void {
     switch (this.currentState) {
-      case GameState.PLAYER_TURN_IDLE:
-      case GameState.PLAYER_TURN_REVEAL_1:
-      case GameState.PLAYER_TURN_REVEAL_2:
+      case MatchPhase.PLAYER_TURN_IDLE:
+      case MatchPhase.PLAYER_TURN_REVEAL_1:
+      case MatchPhase.PLAYER_TURN_REVEAL_2:
         // Penalize player for inaction
         this.onEmitEvent("PLAYER_TIMEOUT_PENALTY");
-        this.transitionTo(GameState.TURN_TRANSITION_COOLDOWN);
+        this.transitionTo(MatchPhase.TURN_TRANSITION_COOLDOWN);
         break;
 
-      case GameState.DEALING_CARDS:
-      case GameState.EVALUATING_BOARD:
-      case GameState.TURN_TRANSITION_COOLDOWN:
+      case MatchPhase.DEALING_CARDS:
+      case MatchPhase.EVALUATING_BOARD:
+      case MatchPhase.TURN_TRANSITION_COOLDOWN:
         // Automated progression for transition states
-        this.transitionTo(GameState.PLAYER_TURN_IDLE);
+        this.transitionTo(MatchPhase.PLAYER_TURN_IDLE);
         break;
     }
 
@@ -216,7 +216,7 @@ export class TurnStateMachine {
   }
 
   // Authoritative Getters
-  public getState(): GameState { return this.currentState; }
+  public getState(): MatchPhase { return this.currentState; }
   public getTick(): number { return this.currentTick; }
   public getExpirationTick(): number { return this.expirationTick; }
   public getSeed(): number { return this.matchSeed; }

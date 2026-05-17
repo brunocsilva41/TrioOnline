@@ -8,9 +8,9 @@
     "db:migrate": "prisma migrate dev"
   },
   "dependencies": {
-    "@prisma/client": "latest"
+    "@prisma/client": "5.22.0"
   },
   "devDependencies": {
-    "prisma": "latest"
+    "prisma": "5.22.0"
   }
 }
