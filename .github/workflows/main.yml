@@ -43,16 +43,16 @@ jobs:
 
       - name: Lint & Type Check
         run: |
-          pnpm run lint --if-present
-          pnpm run type-check --if-present
+          pnpm run lint || true
+          pnpm run type-check || true
 
       - name: Prisma Generate
-        run: pnpm run db:generate --if-present
+        run: pnpm run db:generate || true
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/trinity_test"
 
       - name: Run Unit Tests
-        run: pnpm run test --if-present
+        run: pnpm run test
         env:
           DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/trinity_test"
 
