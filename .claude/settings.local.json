@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"^\\\\-.*\\\\.\\(md|json|yml|yaml\\)$\")",
+      "Bash(cat \"/c/Users/Bruno Silva/Documents/Projetos/TrioOnline/packages/core-engine/src\"/*)",
+      "Bash(npx tsc:*)",
+      "Bash(pnpm --filter @trinity/core-engine run build)",
+      "Bash(pnpm --filter game-server run build)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm --filter game-client run build)",
+      "Bash(pnpm --filter @trinity/core-engine run test)",
+      "WebSearch",
+      "WebFetch(domain:www.geekyhobbies.com)",
+      "WebFetch(domain:x.boardgamearena.net)",
+      "WebFetch(domain:toppingthetable.com)",
+      "WebFetch(domain:www.dadsgamingaddiction.com)",
+      "WebFetch(domain:board-game-rules.com)"
+    ]
+  }
+}
