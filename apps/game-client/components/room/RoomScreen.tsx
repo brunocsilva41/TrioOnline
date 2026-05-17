@@ -68,7 +68,7 @@ export default function RoomScreen() {
           {isPrivate ? "SALA PRIVADA" : "SALA PÚBLICA"}
         </h2>
 
-        {isPrivate && roomCode && (
+        {roomCode && (
           <motion.button
             onClick={copyCode}
             whileHover={{ scale: 1.05 }}

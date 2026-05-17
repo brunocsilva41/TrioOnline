@@ -48,11 +48,10 @@ export class TrioRoom extends Room<GameState> {
         this.state.minPlayers = options.minPlayers || 2;
         this.maxClients = maxPlayers;
 
+        // Every room gets a code (for sharing). Private rooms are hidden from listing.
+        this.state.roomCode = this.generateRoomCode();
         this.state.isPrivate = !!options.isPrivate;
-        if (this.state.isPrivate) {
-            this.state.roomCode = this.generateRoomCode();
-            this.setPrivate(true);
-        }
+        this.setPrivate(this.state.isPrivate);
 
         this.setMetadata({
             roomCode: this.state.roomCode, isPrivate: this.state.isPrivate,

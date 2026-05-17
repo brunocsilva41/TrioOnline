@@ -22,15 +22,18 @@ app.get("/health", (_req, res) => {
 // Room listing
 app.get("/rooms", async (_req, res) => {
     try {
-        const rooms = await matchMaker.query({ name: "trio_room", private: false });
-        res.json({
-            rooms: rooms.map(r => ({
+        const rooms = await matchMaker.query({ name: "trio_room" });
+        const publicRooms = rooms
+            .filter(r => !r.private && !r.locked)
+            .map(r => ({
                 roomId: r.roomId,
+                roomCode: r.metadata?.roomCode || "",
                 playerCount: r.metadata?.playerCount || 0,
                 maxPlayers: r.metadata?.maxPlayers || 8,
                 status: r.metadata?.status || "waiting",
                 hostName: r.metadata?.hostName || "Unknown",
-            }))
+            }));
+        res.json({ rooms: publicRooms
         });
     } catch (e) {
         res.json({ rooms: [] });
