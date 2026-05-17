@@ -7,13 +7,14 @@ settings:
 importers:
 
   .:
+    dependencies:
+      turbo:
+        specifier: latest
+        version: 2.9.14
     devDependencies:
       prettier:
         specifier: ^3.0.0
         version: 3.8.3
-      turbo:
-        specifier: latest
-        version: 2.9.14
       typescript:
         specifier: ^5.0.0
         version: 5.9.3
@@ -1221,7 +1222,7 @@ packages:
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@turbo/darwin-arm64@2.9.14:
@@ -1229,7 +1230,7 @@ packages:
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@turbo/linux-64@2.9.14:
@@ -1237,7 +1238,7 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@turbo/linux-arm64@2.9.14:
@@ -1245,7 +1246,7 @@ packages:
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@turbo/windows-64@2.9.14:
@@ -1253,7 +1254,7 @@ packages:
     cpu: [x64]
     os: [win32]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@turbo/windows-arm64@2.9.14:
@@ -1261,7 +1262,7 @@ packages:
     cpu: [arm64]
     os: [win32]
     requiresBuild: true
-    dev: true
+    dev: false
     optional: true
 
   /@tybys/wasm-util@0.10.2:
@@ -6180,7 +6181,7 @@ packages:
       '@turbo/linux-arm64': 2.9.14
       '@turbo/windows-64': 2.9.14
       '@turbo/windows-arm64': 2.9.14
-    dev: true
+    dev: false
 
   /type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
