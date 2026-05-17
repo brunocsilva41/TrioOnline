@@ -12,8 +12,10 @@
     "db:generate": "turbo run db:generate",
     "start:server": "pnpm --filter game-server run start"
   },
+  "dependencies": {
+    "turbo": "latest"
+  },
   "devDependencies": {
-    "turbo": "latest",
     "typescript": "^5.0.0",
     "prettier": "^3.0.0"
   },
