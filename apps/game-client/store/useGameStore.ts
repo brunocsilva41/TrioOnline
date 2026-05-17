@@ -2,31 +2,19 @@ import { create } from 'zustand';
 
 /**
  * PROJECT TRINITY - Game Client Store
- * 
+ *
  * DOC-ID: [EC-002_REACT_RENDER_THRASHING]
- * COMPLIANCE: [EC-002]
- * 
- * Authoritative client-side state managed via Zustand.
- * Designed for high-frequency WebSocket updates from Colyseus while 
- * preventing UI performance degradation through atomic state fields 
- * and immutable surgical updates.
+ * Surgical atomic state updates for high-frequency WebSocket sync.
  */
 
-export enum GameStatus {
-  WAITING_PLAYERS = "WAITING_PLAYERS",
-  DEALING_CARDS = "DEALING_CARDS",
-  PLAYER_TURN_IDLE = "PLAYER_TURN_IDLE",
-  PLAYER_TURN_REVEAL_1 = "PLAYER_TURN_REVEAL_1",
-  PLAYER_TURN_REVEAL_2 = "PLAYER_TURN_REVEAL_2",
-  EVALUATING_BOARD = "EVALUATING_BOARD",
-  TURN_TRANSITION_COOLDOWN = "TURN_TRANSITION_COOLDOWN",
-  GAME_OVER = "GAME_OVER",
-}
+export type AppPhase = "lobby" | "room" | "countdown" | "dealing" | "playing" | "finished";
 
 export interface CardData {
   id: number;
   value: number;
   isRevealed: boolean;
+  location: "table" | "hand" | "scored";
+  ownerId: string;
 }
 
 export interface TrioData {
@@ -36,112 +24,176 @@ export interface TrioData {
 export interface PlayerData {
   sessionId: string;
   userId: string;
+  displayName: string;
+  avatarUrl: string;
   isOnline: boolean;
+  isAfk: boolean;
+  isHost: boolean;
+  isReady: boolean;
+  seatingPosition: number;
+  emotionState: string;
+  handCount: number;
+  hand: CardData[];
   trios: TrioData[];
+  score: number;
+  lastEmote: string;
+  lastEmoteTick: number;
+}
+
+export interface RoomInfo {
+  roomId: string;
+  playerCount: number;
+  maxPlayers: number;
+  status: string;
+  hostName: string;
 }
 
 interface GameStoreState {
-  // --- ATOMIC STATE FIELDS (EC-002 Compliance) ---
-  // These fields are separated to allow components to subscribe to 
-  // high-frequency updates (like ticks) without re-rendering the whole UI.
-  status: GameStatus;
+  // === APP PHASE ===
+  phase: AppPhase;
+
+  // === ROOM STATE ===
+  roomCode: string;
+  isPrivate: boolean;
+  maxPlayers: number;
+  hostSessionId: string;
+  mySessionId: string;
+  countdown: number;
+
+  // === GAME STATE (Atomic fields - EC-002) ===
   activePlayerSessionId: string | null;
   currentTick: number;
   expirationTick: number;
   tickRate: number;
-  
-  // --- COLLECTIONS ---
-  // Handled with surgical immutable updates to preserve object references 
-  // for unchanged items, preventing render thrashing in lists.
-  cards: CardData[];
+  matchSeed: number;
+  round: number;
+  tableCardCount: number;
+  handSize: number;
+
+  // === COLLECTIONS ===
+  tableCards: CardData[];
   players: Record<string, PlayerData>;
+  myHand: CardData[];
   actionLogWindow: string[];
 
-  // --- UX & Performance (EC-004 Compliance) ---
-  ux: {
-    isThermalThrottled: boolean;
-  };
+  // === LOBBY ===
+  availableRooms: RoomInfo[];
 
-  // --- SETTERS FOR HYDRATION & UPDATES ---
-  syncFullState: (state: Partial<GameStoreState>) => void;
-  setStatus: (status: GameStatus) => void;
+  // === UX FLAGS (EC-004) ===
+  isThermalThrottled: boolean;
+  isTensionActive: boolean;
+  targetedCardId: number | null;
+
+  // === SETTERS ===
+  setPhase: (phase: AppPhase) => void;
+  setMySessionId: (id: string) => void;
+  setRoomInfo: (info: { roomCode: string; isPrivate: boolean; maxPlayers: number; hostSessionId: string }) => void;
+  setCountdown: (n: number) => void;
   setActivePlayer: (sessionId: string | null) => void;
   setTickData: (currentTick: number, expirationTick: number) => void;
-  setThermalThrottled: (isThrottled: boolean) => void;
-  
-  // Player Management
+  setMatchMeta: (seed: number, round: number, tableCardCount: number, handSize: number) => void;
+
+  // Players
   setPlayers: (players: Record<string, PlayerData>) => void;
+  addPlayer: (sessionId: string, data: PlayerData) => void;
   updatePlayer: (sessionId: string, data: Partial<PlayerData>) => void;
-  
-  // Card Management
-  setCards: (cards: CardData[]) => void;
-  updateCard: (index: number, data: Partial<CardData>) => void;
-  
-  // Action Log
+  removePlayer: (sessionId: string) => void;
+
+  // Cards
+  setTableCards: (cards: CardData[]) => void;
+  updateTableCard: (id: number, data: Partial<CardData>) => void;
+  setMyHand: (cards: CardData[]) => void;
+
+  // Lobby
+  setAvailableRooms: (rooms: RoomInfo[]) => void;
+
+  // UX
+  setThermalThrottled: (v: boolean) => void;
+  setTensionActive: (v: boolean) => void;
+  setTargetedCard: (id: number | null) => void;
   setActionLog: (logs: string[]) => void;
+  addActionLog: (log: string) => void;
+
+  // Reset
+  resetGame: () => void;
 }
 
-/**
- * useGameStore Hook
- * 
- * HOW TO USE (EC-002 RULE):
- * ❌ NEVER DO: const { cards } = useGameStore();
- * ✅ ALWAYS DO: const card = useGameStore(state => state.cards[index]);
- * 
- * This ensures that if Card[2] changes, Card[5] DOES NOT re-render.
- */
-export const useGameStore = create<GameStoreState>((set) => ({
-  // Initial State
-  status: GameStatus.WAITING_PLAYERS,
+const initialState = {
+  phase: "lobby" as AppPhase,
+  roomCode: "",
+  isPrivate: false,
+  maxPlayers: 8,
+  hostSessionId: "",
+  mySessionId: "",
+  countdown: 0,
   activePlayerSessionId: null,
   currentTick: 0,
   expirationTick: 0,
   tickRate: 20,
-  cards: [],
-  players: {},
-  actionLogWindow: [],
-  ux: {
-    isThermalThrottled: false,
-  },
+  matchSeed: 0,
+  round: 0,
+  tableCardCount: 0,
+  handSize: 0,
+  tableCards: [] as CardData[],
+  players: {} as Record<string, PlayerData>,
+  myHand: [] as CardData[],
+  actionLogWindow: [] as string[],
+  availableRooms: [] as RoomInfo[],
+  isThermalThrottled: false,
+  isTensionActive: false,
+  targetedCardId: null as number | null,
+};
 
-  // Hydration: Used when first joining a room or during major state syncs.
-  syncFullState: (newState) => set((state) => ({ ...state, ...newState })),
+export const useGameStore = create<GameStoreState>((set) => ({
+  ...initialState,
 
-  // Atomic Setters: High-frequency or status changes.
-  setStatus: (status) => set({ status }),
+  setPhase: (phase) => set({ phase }),
+  setMySessionId: (mySessionId) => set({ mySessionId }),
+  setRoomInfo: (info) => set(info),
+  setCountdown: (countdown) => set({ countdown }),
   setActivePlayer: (activePlayerSessionId) => set({ activePlayerSessionId }),
   setTickData: (currentTick, expirationTick) => set({ currentTick, expirationTick }),
-  setThermalThrottled: (isThermalThrottled) => set((state) => ({
-    ux: { ...state.ux, isThermalThrottled }
-  })),
+  setMatchMeta: (matchSeed, round, tableCardCount, handSize) =>
+    set({ matchSeed, round, tableCardCount, handSize }),
 
-  // Player Updates: Uses surgical lookup to avoid breaking references of other players.
+  // Player updates - surgical
   setPlayers: (players) => set({ players }),
+  addPlayer: (sessionId, data) => set((state) => ({
+    players: { ...state.players, [sessionId]: data }
+  })),
   updatePlayer: (sessionId, data) => set((state) => {
     const player = state.players[sessionId];
     if (!player) return state;
-    return {
-      players: {
-        ...state.players,
-        [sessionId]: { ...player, ...data }
-      }
-    };
+    return { players: { ...state.players, [sessionId]: { ...player, ...data } } };
+  }),
+  removePlayer: (sessionId) => set((state) => {
+    const { [sessionId]: _, ...rest } = state.players;
+    return { players: rest };
   }),
 
-  // Card Updates: Uses index-based surgical update.
-  // This is critical for 36-card board performance.
-  setCards: (cards) => set({ cards }),
-  updateCard: (index, data) => set((state) => {
-    const card = state.cards[index];
-    if (!card) return state;
-    
-    // Create new array for Zustand but keep references to UNCHANGED cards.
-    const newCards = [...state.cards];
-    newCards[index] = { ...card, ...data };
-    
-    return { cards: newCards };
+  // Card updates - surgical
+  setTableCards: (tableCards) => set({ tableCards }),
+  updateTableCard: (id, data) => set((state) => {
+    const idx = state.tableCards.findIndex(c => c.id === id);
+    if (idx === -1) return state;
+    const newCards = [...state.tableCards];
+    newCards[idx] = { ...newCards[idx], ...data };
+    return { tableCards: newCards };
   }),
+  setMyHand: (myHand) => set({ myHand }),
 
-  // Action Log Update
+  // Lobby
+  setAvailableRooms: (availableRooms) => set({ availableRooms }),
+
+  // UX
+  setThermalThrottled: (isThermalThrottled) => set({ isThermalThrottled }),
+  setTensionActive: (isTensionActive) => set({ isTensionActive }),
+  setTargetedCard: (targetedCardId) => set({ targetedCardId }),
   setActionLog: (actionLogWindow) => set({ actionLogWindow }),
+  addActionLog: (log) => set((state) => ({
+    actionLogWindow: [...state.actionLogWindow.slice(-9), log]
+  })),
+
+  // Full reset
+  resetGame: () => set(initialState),
 }));
