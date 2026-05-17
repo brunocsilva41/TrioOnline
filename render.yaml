@@ -4,7 +4,7 @@ services:
     name: trinity-server
     env: node
     plan: free
-    buildCommand: pnpm install && pnpm run build --filter @trinity/core-engine && pnpm run build --filter game-server
+    buildCommand: pnpm install && cd packages/db && npx prisma generate && cd ../.. && pnpm run build --filter @trinity/core-engine && pnpm run build --filter game-server
     startCommand: node apps/game-server/dist/index.js
     healthCheckPath: /health
     envVars:
