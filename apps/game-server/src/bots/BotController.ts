@@ -130,7 +130,7 @@ export class BotController {
 
         // Current game state from room
         const state = this.room.state as GameState;
-        const revealedCards = state.cards.filter(c => c.isRevealed);
+        const revealedCards = state.tableCards.filter((c: any) => c.isRevealed);
         
         // Strategy: 
         // 1. If we have 1 or 2 cards revealed this turn, try to find a match in memory.
@@ -141,12 +141,12 @@ export class BotController {
 
         if (revealedCards.length > 0) {
             // We are in REVEAL_1 or REVEAL_2 state
-            const currentTurnValues = revealedCards.map(c => c.value);
+            const currentTurnValues = revealedCards.map((c: any) => c.value);
             const targetValue = currentTurnValues[0];
 
             // Do we know where another card of this value is?
             const memory = this.memories.get(sessionId) || [];
-            const match = memory.find(m => m.value === targetValue && !state.cards.find(c => c.id === m.cardId)?.isRevealed);
+            const match = memory.find(m => m.value === targetValue && !state.tableCards.toArray().find((c: any) => c.id === m.cardId)?.isRevealed);
             
             if (match) {
                 targetCardId = match.cardId;
@@ -169,7 +169,7 @@ export class BotController {
     }
 
     private pickLogicalRandomCard(sessionId: string, state: GameState): number {
-        const unrevealed = state.cards.filter(c => !c.isRevealed);
+        const unrevealed = state.tableCards.filter((c: any) => !c.isRevealed);
         if (unrevealed.length === 0) return -1;
         
         // Bots prefer table cards for the first move (usually cards with no owner in Schema)
@@ -193,7 +193,7 @@ export class BotController {
 
     private forceRandomAction(sessionId: string) {
         const state = this.room.state as GameState;
-        const unrevealed = state.cards.filter(c => !c.isRevealed);
+        const unrevealed = state.tableCards.filter((c: any) => !c.isRevealed);
         if (unrevealed.length > 0) {
             const card = unrevealed[Math.floor(Math.random() * unrevealed.length)];
             if (typeof this.room.handleReveal === "function") {
