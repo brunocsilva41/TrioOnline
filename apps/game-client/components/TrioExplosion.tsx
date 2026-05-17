@@ -24,7 +24,7 @@ const TrioExplosion: React.FC<TrioExplosionProps> = ({
   color = "#00ffff", 
   isThermalThrottled: propIsThermalThrottled
 }) => {
-  const storeIsThermalThrottled = useGameStore(state => state.ux.isThermalThrottled);
+  const storeIsThermalThrottled = useGameStore(state => state.isThermalThrottled);
   const isThermalThrottled = propIsThermalThrottled ?? storeIsThermalThrottled;
 
   // Optimization: Reduce particle count and complexity if throttled (EC-004 Compliance)

@@ -1,83 +1,131 @@
 "use client";
 
-import React, { memo } from 'react';
-import { motion } from 'framer-motion';
-import { useGameStore } from '../store/useGameStore';
-import { useCardAnimations } from '../hooks/useCardAnimations';
+import React, { memo, forwardRef } from "react";
+import { motion } from "framer-motion";
+import Image from "next/image";
+import { CardData, useGameStore } from "../store/useGameStore";
+import { colyseusService } from "../networking/ColyseusService";
 
 interface CardProps {
+  cardData: CardData;
   index: number;
+  location: "table" | "hand";
 }
 
 /**
  * PROJECT TRINITY - Card Component
- * 
- * Performance: React.memo() prevents re-renders unless the index changes.
- * State: Subscribes ONLY to its specific card data in the store (EC-002).
- * Animations: Uses Framer Motion variants with thermal fallbacks (EC-004).
+ *
+ * Uses actual card images from /public/cards/ (webp format).
+ * - Face: /cards/card_{value}.webp
+ * - Back: /cards/trio_back_card.webp
+ * - 3D flip animation on reveal
+ * - Interactive when it's the player's turn
  */
-const Card: React.FC<CardProps> = memo(({ index }) => {
-  const card = useGameStore((state) => state.cards[index]);
-  const isThermalThrottled = useGameStore((state) => state.ux.isThermalThrottled);
-  
-  // Custom hook for Framer Motion variants with adaptive quality
-  const { variants, activeVariant } = useCardAnimations(
-    card?.isRevealed || false,
-    false, // isTrioMember would come from game logic
-    false  // isFailedReveal would come from game logic
-  );
+const Card = memo(forwardRef<HTMLDivElement, CardProps>(({ cardData, index, location }, ref) => {
+  const activePlayerSessionId = useGameStore((s) => s.activePlayerSessionId);
+  const mySessionId = useGameStore((s) => s.mySessionId);
+  const targetedCardId = useGameStore((s) => s.targetedCardId);
 
-  if (!card) {
-    return (
-      <div className="w-16 h-24 sm:w-20 sm:h-28 md:w-24 md:h-36 bg-white/5 rounded-lg border border-white/10 animate-pulse" />
-    );
-  }
+  const isMyTurn = activePlayerSessionId === mySessionId;
+  const isRevealed = cardData.isRevealed;
+  const isTargeted = targetedCardId === cardData.id;
+  const canInteract = location === "table" && isMyTurn && !isRevealed;
+  const showFront = isRevealed || location === "hand";
+
+  const handleClick = () => {
+    if (!canInteract) return;
+    colyseusService.sendRevealTableCard(index);
+  };
+
+  // Table cards use clamp for responsive sizing; hand cards managed by parent
+  const sizeStyle = location === "table"
+    ? { width: "clamp(50px, 4vw, 72px)", height: "clamp(75px, 6vw, 108px)" }
+    : undefined;
+  const sizeClass = location === "hand"
+    ? "w-[52px] h-[78px] sm:w-[60px] sm:h-[90px] md:w-[68px] md:h-[102px]"
+    : "";
 
   return (
     <motion.div
-      variants={variants}
-      animate={activeVariant}
-      initial="hidden_deck"
-      data-tutorial="board-card"
-      className={`
-        relative w-16 h-24 sm:w-20 sm:h-28 md:w-24 md:h-36 
-        rounded-xl border-2 transform-gpu
-        ${card.isRevealed 
-          ? `bg-gradient-to-br from-white to-gray-200 border-yellow-500 ${!isThermalThrottled ? 'shadow-[0_0_15px_rgba(234,179,8,0.3)]' : ''}` 
-          : `bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 ${!isThermalThrottled ? 'shadow-xl' : ''} cursor-pointer hover:border-blue-400/50 hover:scale-[1.02]`}
+      ref={ref}
+      onClick={handleClick}
+      whileHover={canInteract ? {
+        scale: 1.12,
+        y: -8,
+        rotateZ: 1,
+        transition: { type: "spring", stiffness: 300, damping: 20 }
+      } : (location === "hand" ? { y: -12, scale: 1.08 } : {})}
+      whileTap={canInteract ? { scale: 0.95 } : {}}
+      className={`relative ${sizeClass} select-none flex-shrink-0
+        ${canInteract ? "cursor-pointer" : "cursor-default"}
       `}
+      style={{ perspective: "800px", ...sizeStyle }}
     >
-      {card.isRevealed ? (
-        <div className="flex flex-col items-center justify-center h-full">
-          <span className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-800 select-none">
-            {card.value}
-          </span>
-          <div className="absolute top-2 left-2 text-[10px] font-bold text-slate-400">
-            {card.value}
-          </div>
-          <div className="absolute bottom-2 right-2 text-[10px] font-bold text-slate-400 rotate-180">
-            {card.value}
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center justify-center h-full group">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 border-2 border-blue-500/20 rounded-full flex items-center justify-center transition-colors group-hover:border-blue-500/40">
-            <div className="w-4 h-4 sm:w-6 sm:h-6 bg-blue-500/10 rounded-full flex items-center justify-center">
-               <span className="text-blue-500/30 text-xs font-bold">T</span>
-            </div>
-          </div>
-          {/* Subtle pattern for back of card - Reduced complexity if throttled */}
-          {!isThermalThrottled && (
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none overflow-hidden rounded-xl">
-               <div className="absolute inset-[-100%] bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,white_10px,white_11px)]" />
-            </div>
+      {/* 3D Flip Container */}
+      <motion.div
+        animate={{ rotateY: showFront ? 0 : 180 }}
+        transition={{ duration: 0.5, type: "spring", stiffness: 120, damping: 14 }}
+        className="relative w-full h-full"
+        style={{ transformStyle: "preserve-3d" }}
+      >
+        {/* FRONT FACE */}
+        <div
+          className="absolute inset-0 rounded-lg overflow-hidden shadow-lg"
+          style={{ backfaceVisibility: "hidden" }}
+        >
+          {cardData.value > 0 && (
+            <Image
+              src={`/cards/card_${cardData.value}.webp`}
+              alt={`Card ${cardData.value}`}
+              fill
+              sizes="100px"
+              className="object-cover rounded-lg"
+              priority={location === "hand"}
+            />
+          )}
+          {/* Glow on reveal */}
+          {isRevealed && location === "table" && (
+            <motion.div
+              initial={{ opacity: 0.7, scale: 1 }}
+              animate={{ opacity: 0, scale: 1.3 }}
+              transition={{ duration: 0.8 }}
+              className="absolute inset-0 bg-emerald-400/20 rounded-lg pointer-events-none"
+            />
+          )}
+          {/* Targeted ring */}
+          {isTargeted && (
+            <div className="absolute inset-0 rounded-lg ring-2 ring-amber-400 shadow-gold-glow pointer-events-none" />
           )}
         </div>
-      )}
+
+        {/* BACK FACE */}
+        <div
+          className="absolute inset-0 rounded-lg overflow-hidden shadow-lg"
+          style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+        >
+          <Image
+            src="/cards/trio_back_card.webp"
+            alt="Card back"
+            fill
+            sizes="100px"
+            className="object-cover rounded-lg"
+          />
+          {/* Interactive glow pulse */}
+          {canInteract && (
+            <motion.div
+              animate={{ opacity: [0, 0.3, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="absolute inset-0 rounded-lg border-2 border-emerald-400/40 pointer-events-none"
+            />
+          )}
+        </div>
+      </motion.div>
+
+      {/* Drop shadow */}
+      <div className="absolute inset-x-2 -bottom-1 h-3 bg-black/30 blur-md rounded-full pointer-events-none" />
     </motion.div>
   );
-});
+}));
 
-Card.displayName = 'Card';
-
+Card.displayName = "Card";
 export default Card;

@@ -1,96 +1,157 @@
 "use client";
 
-import React, { memo } from 'react';
-import { useGameStore } from '../store/useGameStore';
+import React, { memo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useGameStore } from "../store/useGameStore";
 
 interface PlayerAvatarProps {
   sessionId: string;
+  isActive?: boolean;
 }
 
 /**
- * PROJECT TRINITY - PlayerAvatar Component
- * 
- * Displays player identity, online status, and collected trios.
- * Highlights the active player with high-fidelity visual feedback.
+ * PROJECT TRINITY - PlayerAvatar
+ *
+ * Shows player presence during gameplay with:
+ * - Neon active turn indicator
+ * - Thinking animation (bouncing dots)
+ * - AFK / offline states
+ * - Card count badge
+ * - Emote popup
+ * - Score/trio markers
  */
-const PlayerAvatar: React.FC<PlayerAvatarProps> = memo(({ sessionId }) => {
-  const player = useGameStore((state) => state.players[sessionId]);
-  const activePlayerSessionId = useGameStore((state) => state.activePlayerSessionId);
-  const isThermalThrottled = useGameStore((state) => state.ux.isThermalThrottled);
-  const isActive = activePlayerSessionId === sessionId;
+const PlayerAvatar: React.FC<PlayerAvatarProps> = memo(({ sessionId, isActive: isActiveProp }) => {
+  const player = useGameStore((s) => s.players[sessionId]);
+  const activePlayerSessionId = useGameStore((s) => s.activePlayerSessionId);
+  const isThermalThrottled = useGameStore((s) => s.isThermalThrottled);
+  const mySessionId = useGameStore((s) => s.mySessionId);
 
   if (!player) return null;
 
+  const isActive = isActiveProp ?? (activePlayerSessionId === sessionId);
+  const isMe = sessionId === mySessionId;
+  const initial = player.displayName?.charAt(0)?.toUpperCase() || "?";
+
   return (
-    <div 
-      data-tutorial={!isActive ? "opponent-avatar" : "player-avatar"}
-      className={`
-      relative flex flex-col items-center gap-3 p-4 rounded-3xl border transition-all duration-500
-      ${isActive 
-        ? `border-yellow-500/50 bg-yellow-500/5 ${!isThermalThrottled ? 'shadow-[0_0_30px_rgba(234,179,8,0.15)] scale-110' : ''} z-10` 
-        : 'border-white/10 bg-white/5 grayscale-[0.5] hover:grayscale-0'}
-    `}>
-      {/* Active Indicator Halo - Disabled when throttled */}
-      {isActive && !isThermalThrottled && (
-        <div className="absolute -inset-1 rounded-3xl bg-yellow-500/20 blur-md animate-pulse" />
-      )}
-
+    <motion.div
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      className="relative flex flex-col items-center gap-1.5"
+    >
+      {/* Active turn ring */}
       <div className="relative">
-        <div className={`
-          w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 transition-colors
-          ${isActive ? 'border-yellow-500' : 'border-slate-700'}
-          bg-gradient-to-tr from-slate-800 to-slate-700 flex items-center justify-center
-        `}>
-          <span className="text-2xl font-black text-white/20 select-none">
-            {player.userId.substring(0, 1).toUpperCase()}
+        {isActive && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="absolute -inset-1.5 rounded-2xl border-2 border-amber-400/60
+              shadow-[0_0_15px_rgba(251,191,36,0.3)]"
+          >
+            {!isThermalThrottled && (
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-[-2px] rounded-2xl border-2 border-transparent border-t-amber-400"
+              />
+            )}
+          </motion.div>
+        )}
+
+        {/* Avatar body */}
+        <motion.div
+          animate={!isThermalThrottled && player.isOnline ? { scale: [1, 1.02, 1] } : {}}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center overflow-hidden
+            border transition-all duration-300
+            ${isActive ? "border-amber-400/50 bg-amber-900/20" : isMe ? "border-emerald-500/30 bg-emerald-900/10" : "border-white/10 bg-slate-900/60"}
+            ${!player.isOnline ? "grayscale opacity-40" : player.isAfk ? "opacity-60" : ""}
+          `}
+        >
+          <span className={`text-lg font-black
+            ${isActive ? "text-amber-300" : isMe ? "text-emerald-300" : "text-white/60"}
+          `}>
+            {initial}
           </span>
-          {/* Avatar Image Placeholder - Simplified when throttled */}
-          {!isThermalThrottled && (
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-500/20 via-transparent to-transparent" />
+
+          {/* Thinking dots when active */}
+          {isActive && !isThermalThrottled && (
+            <div className="absolute bottom-1 flex gap-0.5">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  animate={{ y: [0, -3, 0], opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15 }}
+                  className="w-1 h-1 bg-amber-400 rounded-full"
+                />
+              ))}
+            </div>
           )}
-        </div>
-        
-        {/* Status Indicator */}
-        <div className={`
-          absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-4 border-[#0a0a0a]
-          ${player.isOnline ? `bg-emerald-500 ${!isThermalThrottled ? 'shadow-[0_0_10px_rgba(16,185,129,0.5)]' : ''}` : 'bg-rose-500'}
+
+          {/* AFK Zzz */}
+          {player.isAfk && player.isOnline && (
+            <motion.span
+              animate={{ opacity: [0.3, 0.8, 0.3], y: [0, -4, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="absolute top-0 right-0.5 text-amber-300 text-[9px] font-bold"
+            >
+              Z
+            </motion.span>
+          )}
+        </motion.div>
+
+        {/* Online status dot */}
+        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#020617]
+          ${!player.isOnline ? "bg-rose-400" : player.isAfk ? "bg-amber-400" : "bg-emerald-400"}
         `} />
-      </div>
-      
-      <div className="text-center space-y-1">
-        <p className={`
-          text-xs sm:text-sm font-bold tracking-tight truncate w-24 sm:w-32 transition-colors
-          ${isActive ? 'text-yellow-400' : 'text-slate-300'}
-        `}>
-          {player.userId}
-        </p>
-        
-        {/* Score / Trios */}
-        <div className="flex gap-1.5 justify-center mt-1">
-          {[...Array(3)].map((_, i) => (
-            <div 
-              key={i} 
-              className={`
-                w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border transition-all duration-300
-                ${i < player.trios.length 
-                  ? `bg-yellow-500 border-yellow-300 ${!isThermalThrottled ? 'shadow-[0_0_8px_rgba(234,179,8,0.6)]' : ''}` 
-                  : 'bg-white/5 border-white/10'}
-              `} 
-            />
-          ))}
-        </div>
+
+        {/* Card count badge */}
+        {player.handCount > 0 && (
+          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-800 border border-white/20
+            flex items-center justify-center">
+            <span className="text-[8px] font-bold text-white/70">{player.handCount}</span>
+          </div>
+        )}
       </div>
 
-      {/* Turn Timer Placeholder (if active) */}
-      {isActive && (
-         <div className={`absolute -top-1 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-yellow-500 rounded-full ${!isThermalThrottled ? 'shadow-lg' : ''}`}>
-            <span className="text-[10px] font-black text-black leading-none whitespace-nowrap">YOUR TURN</span>
-         </div>
-      )}
-    </div>
+      {/* Name & score */}
+      <div className="text-center max-w-[80px]">
+        <p className={`text-[9px] sm:text-[10px] font-bold truncate
+          ${isActive ? "text-amber-300" : isMe ? "text-emerald-300" : "text-white/50"}
+        `}>
+          {player.displayName}
+        </p>
+
+        {/* Trio markers */}
+        {player.trios.length > 0 && (
+          <div className="flex gap-0.5 justify-center mt-0.5">
+            {player.trios.map((trio, i) => (
+              <motion.div
+                key={i}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="w-2 h-2 rounded-sm bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.5)]"
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Emote bubble */}
+      <AnimatePresence>
+        {player.lastEmote && (
+          <motion.div
+            initial={{ scale: 0, y: 10, opacity: 0 }}
+            animate={{ scale: 1, y: -5, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            className="absolute -top-8 bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-sm"
+          >
+            {player.lastEmote}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 });
 
-PlayerAvatar.displayName = 'PlayerAvatar';
-
+PlayerAvatar.displayName = "PlayerAvatar";
 export default PlayerAvatar;

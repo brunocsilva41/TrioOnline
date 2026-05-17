@@ -9,7 +9,7 @@ import { useGameStore } from '../store/useGameStore';
  */
 export const useAdaptiveQuality = () => {
   const setThermalThrottled = useGameStore((state) => state.setThermalThrottled);
-  const isThermalThrottled = useGameStore((state) => state.ux.isThermalThrottled);
+  const isThermalThrottled = useGameStore((state) => state.isThermalThrottled);
   
   const frameCount = useRef(0);
   const lastTimestamp = useRef(performance.now());
