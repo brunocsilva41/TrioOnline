@@ -1,12 +1,20 @@
 import http from "http";
 import express from "express";
 import cors from "cors";
+import crypto from "crypto";
+import { PrismaClient } from "@prisma/client";
 import { Server, matchMaker } from "colyseus";
 import { WebSocketTransport } from "@colyseus/ws-transport";
 import { TrioRoom } from "./rooms/TrioRoom";
 
 const port = Number(process.env.PORT || 2567);
 const app = express();
+const prisma = new PrismaClient();
+
+// Simple hash for password
+const hashPassword = (password: string) => {
+    return crypto.createHash("sha256").update(password).digest("hex");
+};
 
 // CORS must be the very first middleware — allows all origins
 app.use(cors());
@@ -14,9 +22,134 @@ app.options("*", cors()); // Handle all OPTIONS preflight requests
 
 app.use(express.json());
 
+// === AUTH & PROFILE ROUTES ===
+
+app.post("/api/register", async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+        if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+        
+        const existingUsername = await prisma.user.findUnique({ where: { username } });
+        if (existingUsername) return res.status(400).json({ error: "Username already taken" });
+        
+        if (email) {
+            const existingEmail = await prisma.user.findUnique({ where: { email } });
+            if (existingEmail) return res.status(400).json({ error: "Email already registered" });
+        }
+        
+        const user = await prisma.user.create({
+            data: {
+                username,
+                email: email || null,
+                password_hash: hashPassword(password),
+                auth_provider: "local",
+                provider_id: `local_${username}_${Date.now()}`
+            }
+        });
+        
+        res.json({ id: user.id, username: user.username, total_matches: user.total_matches, total_wins: user.total_wins, total_trios: user.total_trios, total_playtime_seconds: user.total_playtime_seconds, created_at: user.created_at });
+    } catch (e) {
+        console.error("[Auth] Register error:", e);
+        res.status(500).json({ error: "Server error during registration" });
+    }
+});
+
+app.post("/api/login", async (req, res) => {
+    try {
+        const { login, password } = req.body; // login can be email or username
+        if (!login || !password) return res.status(400).json({ error: "Login and password required" });
+        
+        const isEmail = String(login).includes("@");
+        const user = await prisma.user.findFirst({
+            where: isEmail ? { email: login } : { username: login }
+        });
+        
+        if (!user || user.password_hash !== hashPassword(password)) {
+            return res.status(401).json({ error: "Invalid credentials" });
+        }
+        
+        // Register login
+        await prisma.userLogin.create({ data: { user_id: user.id } }).catch(() => {});
+        
+        res.json({ id: user.id, username: user.username, total_matches: user.total_matches, total_wins: user.total_wins, total_trios: user.total_trios, total_playtime_seconds: user.total_playtime_seconds, created_at: user.created_at });
+    } catch (e) {
+        console.error("[Auth] Login error:", e);
+        res.status(500).json({ error: "Server error during login" });
+    }
+});
+
+app.get("/api/leaderboard", async (req, res) => {
+    try {
+        const topPlayers = await prisma.user.findMany({
+            orderBy: { total_wins: 'desc' },
+            take: 10,
+            select: {
+                id: true,
+                username: true,
+                total_matches: true,
+                total_wins: true,
+                total_playtime_seconds: true,
+                total_trios: true
+            }
+        });
+        res.json({ leaderboard: topPlayers });
+    } catch (e) {
+        console.error("[API] Leaderboard error:", e);
+        res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+});
+
+app.get("/api/profile/:id", async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+        if (!user) return res.status(404).json({ error: "User not found" });
+        res.json({ id: user.id, username: user.username, total_matches: user.total_matches, total_wins: user.total_wins, total_trios: user.total_trios, total_playtime_seconds: user.total_playtime_seconds, created_at: user.created_at });
+    } catch (e) {
+        res.status(500).json({ error: "Server error fetching profile" });
+    }
+});
+
+app.post("/api/profile/update", async (req, res) => {
+    try {
+        const { id, currentPassword, newUsername, newPassword } = req.body;
+        const user = await prisma.user.findUnique({ where: { id } });
+        if (!user) return res.status(404).json({ error: "User not found" });
+        
+        if (user.password_hash && user.password_hash !== hashPassword(currentPassword)) {
+            return res.status(401).json({ error: "Current password incorrect" });
+        }
+        
+        const dataToUpdate: any = {};
+        if (newUsername) {
+            const existing = await prisma.user.findUnique({ where: { username: newUsername } });
+            if (existing && existing.id !== id) return res.status(400).json({ error: "Username already taken" });
+            dataToUpdate.username = newUsername;
+        }
+        if (newPassword) {
+            dataToUpdate.password_hash = hashPassword(newPassword);
+        }
+        
+        const updated = await prisma.user.update({
+            where: { id },
+            data: dataToUpdate
+        });
+        
+        res.json({ id: updated.id, username: updated.username });
+    } catch (e) {
+        console.error("[API] Profile update error:", e);
+        res.status(500).json({ error: "Server error updating profile" });
+    }
+});
+
 // Health check
-app.get("/health", (_req, res) => {
-    res.json({ status: "ok", uptime: process.uptime() });
+app.get("/health", async (_req, res) => {
+    let dbStatus = "ok";
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+    } catch (e) {
+        dbStatus = "error";
+    }
+    res.json({ status: "ok", uptime: process.uptime(), database: dbStatus });
 });
 
 // Room listing
@@ -63,6 +196,6 @@ const gameServer = new Server({
 
 gameServer.define("trio_room", TrioRoom).enableRealtimeListing();
 
-httpServer.listen(port, () => {
-    console.log(`[Trinity] Server on port ${port}`);
+httpServer.listen(port, "0.0.0.0", () => {
+    console.log(`[Trinity] Server listening on port ${port} (0.0.0.0)`);
 });

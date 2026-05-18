@@ -48,7 +48,21 @@ export interface RoomInfo {
   hostName: string;
 }
 
+export interface UserProfile {
+  id: string;
+  username: string;
+  total_matches: number;
+  total_wins: number;
+  total_trios: number;
+  total_playtime_seconds: number;
+  created_at: string;
+}
+
 interface GameStoreState {
+  // === AUTH ===
+  authUser: UserProfile | null;
+  setAuthUser: (u: UserProfile | null) => void;
+
   // === APP PHASE ===
   phase: AppPhase;
 
@@ -114,11 +128,21 @@ interface GameStoreState {
   setActionLog: (logs: string[]) => void;
   addActionLog: (log: string) => void;
 
+  nudgeEvent: { from: string, to: string, ts: number } | null;
+  emoteEvent: { sessionId: string, emote: string, ts: number } | null;
+  trioCinematicEvent: { sid: string, value: number, playerName: string, ts: number } | null;
+  
+  triggerNudge: (from: string, to: string) => void;
+  triggerEmote: (sessionId: string, emote: string) => void;
+  triggerTrioCinematic: (sid: string, value: number, playerName: string) => void;
+  clearTrioCinematic: () => void;
+
   // Reset
   resetGame: () => void;
 }
 
 const initialState = {
+  authUser: null as UserProfile | null,
   phase: "lobby" as AppPhase,
   roomCode: "",
   isPrivate: false,
@@ -142,11 +166,15 @@ const initialState = {
   isThermalThrottled: false,
   isTensionActive: false,
   targetedCardId: null as number | null,
+  nudgeEvent: null,
+  emoteEvent: null,
+  trioCinematicEvent: null,
 };
 
 export const useGameStore = create<GameStoreState>((set) => ({
   ...initialState,
 
+  setAuthUser: (u) => set({ authUser: u }),
   setPhase: (phase) => set({ phase }),
   setMySessionId: (mySessionId) => set({ mySessionId }),
   setRoomInfo: (info) => set(info),
@@ -193,6 +221,11 @@ export const useGameStore = create<GameStoreState>((set) => ({
   addActionLog: (log) => set((state) => ({
     actionLogWindow: [...state.actionLogWindow.slice(-9), log]
   })),
+
+  triggerNudge: (from, to) => set({ nudgeEvent: { from, to, ts: Date.now() } }),
+  triggerEmote: (sessionId, emote) => set({ emoteEvent: { sessionId, emote, ts: Date.now() } }),
+  triggerTrioCinematic: (sid, value, playerName) => set({ trioCinematicEvent: { sid, value, playerName, ts: Date.now() } }),
+  clearTrioCinematic: () => set({ trioCinematicEvent: null }),
 
   // Full reset
   resetGame: () => set(initialState),

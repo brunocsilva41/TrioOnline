@@ -9,9 +9,11 @@ datasource db {
 
 model User {
   id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  auth_provider   String   // 'google', 'apple', 'guest'
+  auth_provider   String   // 'local', 'google', 'apple', 'guest'
   provider_id     String   @unique
+  email           String?  @unique
   username        String   @unique
+  password_hash   String?
   avatar_url      String?
   
   // ELO & Matchmaking (Atualizado via background jobs)
@@ -19,9 +21,13 @@ model User {
   mmr_rd          Float    @default(350.0)
   mmr_volatility  Float    @default(0.06)
   
-  // Economy
+  // Economy & Stats
   t_coins         Int      @default(0)
   gems            Int      @default(0)
+  total_matches   Int      @default(0)
+  total_wins      Int      @default(0)
+  total_trios     Int      @default(0)
+  total_playtime_seconds Int @default(0)
   
   // Relations
   matches         MatchPlayer[]
