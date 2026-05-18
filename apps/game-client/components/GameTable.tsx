@@ -1,11 +1,14 @@
 "use client";
 
-import React, { memo, useMemo } from "react";
+import React, { memo, useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useGameStore, PlayerData } from "../store/useGameStore";
 import { colyseusService } from "../networking/ColyseusService";
+import { usePreloader } from "./AssetPreloader";
 import Card from "./Card";
+import TrioCinematic from "./game/TrioCinematic";
+import EmoteRain from "./game/EmoteRain";
 
 /* ━━━ Timer ━━━ */
 const Timer = memo(() => {
@@ -35,85 +38,119 @@ function OpponentSeat({ player, isActive, isMyTurn }: {
 }) {
   const ch = player.displayName?.charAt(0)?.toUpperCase() || "?";
   const revealed = player.hand?.filter(c => c.isRevealed) || [];
+  
+  const emoteEvent = useGameStore((s) => s.emoteEvent);
+  const nudgeEvent = useGameStore((s) => s.nudgeEvent);
+  const isEmoting = emoteEvent?.sessionId === player.sessionId && (Date.now() - emoteEvent.ts < 3000);
+  const isNudged = nudgeEvent?.to === player.sessionId && (Date.now() - nudgeEvent.ts < 1000);
 
   return (
-    <div className="relative flex flex-col items-center gap-1">
-      {/* Avatar */}
-      <div className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center border-[3px]
-        ${isActive ? "border-amber-400 bg-gradient-to-br from-amber-800/60 to-amber-950/60 shadow-[0_0_18px_rgba(251,191,36,0.4)]"
-          : "border-white/15 bg-white/5"}
-        ${!player.isOnline ? "opacity-30 grayscale" : ""}
-      `}>
-        <span className={`font-black text-base sm:text-lg ${isActive ? "text-amber-300" : "text-white/50"}`}>{ch}</span>
-        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#1a0e08] ${player.isOnline ? "bg-emerald-400" : "bg-red-400"}`} />
-        {isActive && (
-          <motion.div animate={{ rotate: 360 }} transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-            className="absolute -inset-1 rounded-full border-2 border-transparent border-t-amber-400/60 pointer-events-none" />
-        )}
-      </div>
-
-      {/* Name */}
-      <span className={`text-[10px] font-bold max-w-[72px] truncate ${isActive ? "text-amber-300" : "text-white/40"}`}>
-        {player.displayName}
-      </span>
-      <span className="text-[8px] text-white/20">{player.handCount} cartas</span>
-
-      {/* ══ ASK BUTTONS — directly on each opponent ══ */}
-      {isMyTurn && player.handCount > 0 && (
-        <div className="flex gap-1 mt-0.5">
-          <button
-            onClick={() => colyseusService.sendAskPlayerCard(player.sessionId, "lowest")}
-            className="px-2 py-1 rounded-md bg-sky-700/80 hover:bg-sky-600 text-[8px] font-bold text-white
-              shadow shadow-sky-900/40 hover:scale-105 active:scale-95 transition-all"
-          >
-            ▼ Menor
-          </button>
-          <button
-            onClick={() => colyseusService.sendAskPlayerCard(player.sessionId, "highest")}
-            className="px-2 py-1 rounded-md bg-fuchsia-700/80 hover:bg-fuchsia-600 text-[8px] font-bold text-white
-              shadow shadow-fuchsia-900/40 hover:scale-105 active:scale-95 transition-all"
-          >
-            ▲ Maior
-          </button>
-        </div>
-      )}
-
-      {/* Revealed cards */}
-      <AnimatePresence>
-        {revealed.length > 0 && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="flex gap-1 mt-0.5 overflow-hidden">
-            {revealed.map((card) => (
-              <motion.div key={card.id} initial={{ scale: 0, rotateY: 180 }} animate={{ scale: 1, rotateY: 0 }}
-                exit={{ scale: 0, rotateY: -180 }} transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                className="relative w-9 h-[54px] rounded overflow-hidden shadow-lg ring-2 ring-amber-400/50">
-                <Image src={`/cards/card_${card.value}.webp`} alt={`${card.value}`} fill sizes="36px" className="object-cover" />
-                <motion.div initial={{ opacity: 0.6 }} animate={{ opacity: 0 }} transition={{ duration: 1.5 }}
-                  className="absolute inset-0 bg-amber-300/25 pointer-events-none" />
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Trios */}
-      {player.trios?.length > 0 && (
-        <div className="flex gap-1 mt-0.5">
+    <div className="flex items-start gap-2">
+      {/* ══ LEFT: Trios ══ */}
+      {player.trios?.length > 0 ? (
+        <div className="flex flex-col gap-1 w-8 items-end justify-start mt-2">
           {player.trios.map((t, i) => (
-            <motion.div key={i} initial={{ scale: 0 }} animate={{ scale: 1 }}
-              className="relative w-7 h-[42px] rounded overflow-hidden ring-2 ring-amber-500/60 shadow-lg shadow-amber-500/20">
-              <Image src={`/cards/card_${t.value}.webp`} alt="" fill sizes="28px" className="object-cover" />
-              <div className="absolute top-0 right-0 bg-amber-400 text-black text-[6px] font-black px-1 rounded-bl">T</div>
+            <motion.div key={i} initial={{ scale: 0, x: 20 }} animate={{ scale: 1, x: 0 }}
+              className="relative w-8 h-[48px] rounded-md overflow-hidden ring-2 ring-amber-500/60 shadow-[0_5px_15px_rgba(251,191,36,0.3)]">
+              <Image src={`/cards/card_${t.value}.webp`} alt="" fill sizes="32px" className="object-cover" />
+              <div className="absolute top-0 right-0 bg-amber-400 text-black text-[6px] font-black px-1 rounded-bl shadow-md">T</div>
             </motion.div>
           ))}
         </div>
+      ) : (
+        <div className="w-8" />
       )}
+
+      {/* ══ CENTER: Avatar & Info ══ */}
+      <div className="relative flex flex-col items-center gap-1 group z-20">
+        {/* Emote Display */}
+        <AnimatePresence>
+          {isEmoting && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.5 }}
+              animate={{ opacity: 1, y: -25, scale: 1.5 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="absolute -top-10 text-3xl z-50 pointer-events-none drop-shadow-2xl"
+            >
+              {emoteEvent.emote}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Avatar */}
+        <motion.div 
+          animate={isNudged ? { x: [-5, 5, -5, 5, 0], transition: { duration: 0.4 } } : {}}
+          className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center border-[3px]
+          ${isActive ? "border-amber-400 bg-gradient-to-br from-amber-800/60 to-amber-950/60 shadow-[0_0_25px_rgba(251,191,36,0.5)]"
+            : "border-white/20 bg-white/5"}
+          ${!player.isOnline ? "opacity-30 grayscale" : ""}
+        `}>
+          <span className={`font-black text-lg sm:text-xl ${isActive ? "text-amber-300 drop-shadow-lg" : "text-white/60"}`}>{ch}</span>
+          <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#1a0e08] shadow-md ${player.isOnline ? "bg-emerald-400" : "bg-red-400"}`} />
+          {isActive && (
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+              className="absolute -inset-1.5 rounded-full border-[3px] border-transparent border-t-amber-400/80 pointer-events-none drop-shadow-lg" />
+          )}
+        </motion.div>
+
+        {/* Name */}
+        <span className={`text-[10px] sm:text-xs font-black max-w-[80px] truncate uppercase tracking-widest mt-1 ${isActive ? "text-amber-300 drop-shadow-md" : "text-white/50"}`}>
+          {player.displayName}
+        </span>
+        <span className="text-[8px] font-mono text-white/30 tracking-widest">{player.handCount} CARTAS</span>
+
+        {/* ══ ASK BUTTONS ══ */}
+        {isMyTurn && player.handCount > 0 && (
+          <div className="flex gap-1.5 mt-1">
+            <button
+              onClick={() => colyseusService.sendAskPlayerCard(player.sessionId, "lowest")}
+              className="px-2.5 py-1.5 rounded-md bg-sky-600/90 hover:bg-sky-500 text-[9px] font-black text-white uppercase tracking-widest
+                shadow-[0_4px_10px_rgba(2,132,199,0.4)] hover:scale-105 active:scale-95 transition-all"
+            >
+              ▼ MENOR
+            </button>
+            <button
+              onClick={() => colyseusService.sendAskPlayerCard(player.sessionId, "highest")}
+              className="px-2.5 py-1.5 rounded-md bg-fuchsia-600/90 hover:bg-fuchsia-500 text-[9px] font-black text-white uppercase tracking-widest
+                shadow-[0_4px_10px_rgba(192,38,211,0.4)] hover:scale-105 active:scale-95 transition-all"
+            >
+              ▲ MAIOR
+            </button>
+          </div>
+        )}
+
+        {/* Revealed cards */}
+        <AnimatePresence>
+          {revealed.length > 0 && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+              className="flex gap-1.5 mt-1 overflow-hidden">
+              {revealed.map((card) => (
+                <motion.div key={card.id} initial={{ scale: 0, rotateY: 180 }} animate={{ scale: 1, rotateY: 0 }}
+                  exit={{ scale: 0, rotateY: -180 }} transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                  className="relative w-10 h-[60px] rounded-md overflow-hidden shadow-[0_5px_15px_rgba(0,0,0,0.5)] ring-2 ring-amber-400/70">
+                  <Image src={`/cards/card_${card.value}.webp`} alt={`${card.value}`} fill sizes="40px" className="object-cover" />
+                  <motion.div initial={{ opacity: 0.6 }} animate={{ opacity: 0 }} transition={{ duration: 1.5 }}
+                    className="absolute inset-0 bg-amber-300/30 pointer-events-none" />
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ══ RIGHT: Social Menu (Permanently Visible, Horizontal) ══ */}
+      <div className="flex gap-1 items-start mt-2 pointer-events-auto z-30">
+        <button onClick={() => colyseusService.sendEmote("❤️")} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-[10px] sm:text-xs shadow-[0_3px_10px_rgba(0,0,0,0.3)] hover:scale-110 active:scale-95 transition-all">❤️</button>
+        <button onClick={() => colyseusService.sendEmote("😂")} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-[10px] sm:text-xs shadow-[0_3px_10px_rgba(0,0,0,0.3)] hover:scale-110 active:scale-95 transition-all">😂</button>
+        <button onClick={() => colyseusService.sendNudge(player.sessionId)} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-indigo-500/80 hover:bg-indigo-400 flex items-center justify-center text-[10px] sm:text-xs text-white font-bold shadow-[0_3px_10px_rgba(99,102,241,0.4)] hover:scale-110 active:scale-95 transition-all">👉</button>
+      </div>
     </div>
   );
 }
 
 /* ━━━ MAIN ━━━ */
 const GameTable: React.FC = memo(() => {
+  const { isReady, progress } = usePreloader();
   const players = useGameStore((s) => s.players);
   const tableCards = useGameStore((s) => s.tableCards);
   const myHand = useGameStore((s) => s.myHand);
@@ -140,6 +177,29 @@ const GameTable: React.FC = memo(() => {
     return 6;
   }, [visibleCards.length]);
 
+  const tableDimensions = useMemo(() => {
+    const n = visibleCards.length;
+    const cols = gridCols;
+    const rows = Math.ceil(n / cols) || 1;
+    
+    // We assume the max card size from clamp and a reasonable gap
+    const cardW = 72; 
+    const cardH = 108;
+    const gap = 12;
+    const padding = 16; // 12px requested + 4px safety
+
+    const width = (cols * cardW) + ((cols - 1) * gap) + (padding * 2);
+    const height = (rows * cardH) + ((rows - 1) * gap) + (padding * 2);
+
+    return {
+      width: `clamp(${width}px, 95vw, 1100px)`,
+      minHeight: `${height}px`
+    };
+  }, [visibleCards.length, gridCols]);
+
+  const trioCinematicEvent = useGameStore((s) => s.trioCinematicEvent);
+  const clearTrioCinematic = useGameStore((s) => s.clearTrioCinematic);
+
   const lastEvent = useMemo(() => {
     if (!logs.length) return "";
     const l = logs[logs.length - 1];
@@ -155,8 +215,87 @@ const GameTable: React.FC = memo(() => {
   }, [logs, mySid, players]);
 
   return (
-    <div className="w-full h-screen flex flex-col overflow-hidden select-none"
-      style={{ background: "linear-gradient(180deg, #0c0704 0%, #1a0e08 30%, #1a0e08 70%, #0c0704 100%)" }}>
+    <div className="w-full h-screen flex flex-col overflow-hidden select-none relative bg-[#020617]">
+      
+      {/* ══ NEW RICH BACKGROUND ══ */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        {/* Radial Gradients */}
+        <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-[radial-gradient(circle_at_50%_50%,_rgba(16,185,129,0.1)_0%,_transparent_70%)]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-[radial-gradient(circle_at_50%_50%,_rgba(251,191,36,0.05)_0%,_transparent_70%)]" />
+        
+        {/* Dynamic Light Rays */}
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vw] opacity-[0.03] mix-blend-screen"
+          style={{ background: "conic-gradient(from 0deg, transparent 0deg, #10b981 10deg, transparent 20deg, transparent 40deg, #f59e0b 50deg, transparent 60deg, transparent 80deg, #10b981 90deg, transparent 100deg)" }}
+        />
+
+        {/* Floating Particles */}
+        {Array.from({ length: 20 }).map((_, i) => (
+          <motion.div
+            key={`bg-part-${i}`}
+            className="absolute rounded-full bg-emerald-500/20 blur-[2px]"
+            style={{ width: Math.random() * 6 + 2, height: Math.random() * 6 + 2 }}
+            animate={{
+              y: ["100vh", "-10vh"],
+              x: [`${Math.random() * 100}vw`, `${Math.random() * 100}vw`],
+              opacity: [0, 0.6, 0]
+            }}
+            transition={{
+              duration: 10 + Math.random() * 10,
+              repeat: Infinity,
+              delay: Math.random() * 5,
+              ease: "linear"
+            }}
+          />
+        ))}
+
+        <TableCardShadows />
+      </div>
+
+      <EmoteRain />
+
+      <AnimatePresence>
+        {trioCinematicEvent && (
+          <TrioCinematic 
+            key={`${trioCinematicEvent.sid}-${trioCinematicEvent.value}-${trioCinematicEvent.ts}`}
+            playerName={trioCinematicEvent.playerName} 
+            cardValue={trioCinematicEvent.value} 
+            onComplete={clearTrioCinematic} 
+          />
+        )}
+      </AnimatePresence>
+
+
+      <AnimatePresence>
+        {!isReady && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[100] bg-[#020617] flex flex-col items-center justify-center"
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full mb-6"
+            />
+            <h2 className="text-sm font-black tracking-[0.5em] text-emerald-500 uppercase mb-2">
+              SINCRONIZANDO ATIVOS
+            </h2>
+            <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
+              <motion.div 
+                className="h-full bg-emerald-500 shadow-[0_0_10px_#10b981]"
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="mt-4 text-[10px] text-white/20 font-mono tracking-widest uppercase">
+              Otimizando Experiência...
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ═══ HUD ═══ */}
       <div className="flex-none h-10 flex items-center justify-between px-3 border-b border-white/5 bg-black/30 z-50">
@@ -175,51 +314,71 @@ const GameTable: React.FC = memo(() => {
               </motion.div>
             )}
           </AnimatePresence>
-          {isHost && (
+          {isHost ? (
+            <div className="flex items-center gap-1.5 ml-2">
+              <button onClick={() => colyseusService.leaveRoom()}
+                className="px-2 py-1 rounded border border-white/20 text-[8px] font-bold text-white/70 hover:bg-white/10 hover:text-white transition-all">
+                Sair
+              </button>
+              <button onClick={() => colyseusService.sendCloseRoom()}
+                className="px-2 py-1 rounded bg-red-900/30 border border-red-500/20 text-[8px] font-bold text-red-400/70 hover:bg-red-900/50 hover:text-red-300 transition-all">
+                Encerrar Partida
+              </button>
+            </div>
+          ) : (
             <button onClick={() => colyseusService.leaveRoom()}
-              className="px-2 py-1 rounded bg-red-900/30 border border-red-500/20 text-[8px] font-bold text-red-400/70 hover:bg-red-900/50 hover:text-red-300 transition-all">
-              Sair
+              className="px-2 py-1 ml-2 rounded bg-red-900/30 border border-red-500/20 text-[8px] font-bold text-red-400/70 hover:bg-red-900/50 hover:text-red-300 transition-all">
+              Sair da Partida
             </button>
           )}
         </div>
       </div>
 
       {/* ═══ OPPONENTS — each with their own ask buttons ═══ */}
-      <div className="flex-none flex items-start justify-center gap-4 sm:gap-6 px-4 py-2 z-30">
+      <div className="flex-none flex flex-wrap items-start justify-center gap-2 sm:gap-4 md:gap-6 px-2 sm:px-4 py-2 z-30 max-h-[25vh] overflow-y-auto custom-scroll">
         {opponents.map((p) => (
-          <OpponentSeat key={p.sessionId} player={p} isActive={p.sessionId === activeSid} isMyTurn={isMyTurn} />
+          <div key={p.sessionId} className="transform scale-90 sm:scale-100">
+            <OpponentSeat player={p} isActive={p.sessionId === activeSid} isMyTurn={isMyTurn} />
+          </div>
         ))}
       </div>
 
       {/* ═══ TABLE ═══ */}
-      <div className="flex-1 min-h-0 flex items-center justify-center z-10">
-        <div className="relative rounded-[50%/46%]"
+      <div className="flex-1 min-h-0 flex items-center justify-center z-10 p-2 sm:p-4 overflow-auto custom-scroll">
+        <div className="relative rounded-2xl transition-all duration-500"
           style={{
-            width: "clamp(720px, 60vw, 1060px)",
-            aspectRatio: "16 / 9",
+            ...tableDimensions,
             background: "radial-gradient(ellipse at 50% 50%, #0f6b55 0%, #0b4f3e 30%, #083d2f 55%, #052a20 80%, #031a14 100%)",
             boxShadow: "inset 0 0 50px rgba(0,0,0,0.4), inset 0 0 15px rgba(0,0,0,0.3), 0 6px 30px rgba(0,0,0,0.5)",
-            border: "5px solid #1a0e08",
-            outline: "2px solid #2a1a0f",
+            border: "clamp(2px, 0.5vw, 5px) solid #1a0e08",
+            outline: "clamp(1px, 0.2vw, 2px) solid #2a1a0f",
           }}>
-          <div className="absolute inset-0 rounded-[50%/46%] opacity-[0.03] pointer-events-none overflow-hidden"
+          <div className="absolute inset-0 rounded-2xl opacity-[0.03] pointer-events-none overflow-hidden"
             style={{ backgroundImage: "radial-gradient(circle, #fff 0.4px, transparent 0.4px)", backgroundSize: "6px 6px" }} />
-          <div className="absolute inset-[10px] rounded-[50%/44%] border border-amber-600/10 pointer-events-none" />
+          <div className="absolute inset-[10px] rounded-xl border border-amber-600/10 pointer-events-none" />
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.025]">
-            <span className="text-4xl font-black tracking-[0.3em] text-white italic">TRIO</span>
+            <span className="text-3xl sm:text-4xl font-black tracking-[0.3em] text-white italic">TRIO</span>
           </div>
 
           {/* Cards */}
-          <div className="absolute inset-0 flex items-center justify-center" style={{ padding: "clamp(24px, 4vw, 48px)" }}>
-            <div className="grid place-items-center justify-center content-center"
-              style={{ gridTemplateColumns: `repeat(${gridCols}, auto)`, gap: "clamp(12px, 2vw, 24px)" }}>
+          <div className="flex items-center justify-center w-full h-full p-4">
+            <div className="grid place-items-center justify-center content-center w-full"
+              style={{ 
+                gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`, 
+                gap: "12px",
+                maxWidth: "100%"
+              }}>
               {visibleCards.map((card, i) => {
                 const origIdx = tableCards.findIndex(c => c.id === card.id);
                 return (
                   <motion.div key={card.id} initial={{ scale: 0.5, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: i * 0.015, type: "spring", stiffness: 200, damping: 18 }}>
-                    <Card cardData={card} index={origIdx} location="table" />
+                    transition={{ delay: i * 0.015, type: "spring", stiffness: 200, damping: 18 }}
+                    className="w-full flex justify-center items-center"
+                  >
+                    <div className="transform scale-90 sm:scale-100">
+                      <Card cardData={card} index={origIdx} location="table" />
+                    </div>
                   </motion.div>
                 );
               })}
@@ -318,4 +477,51 @@ export default GameTable;
 function getHandRot(i: number, total: number): number {
   if (total <= 1) return 0;
   return (i - (total - 1) / 2) * 1.5;
+}
+
+// 3D Table Background Card Shadows
+function TableCardShadows() {
+  // Use a fixed set of card values for the background
+  const cards = [2, 4, 7, 9, 11, 3, 6, 10];
+  
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none perspective-[1200px]">
+      {cards.map((val, i) => (
+        <motion.div
+          key={`shadow-${i}`}
+          initial={{ 
+            opacity: 0, 
+            y: "110vh", 
+            x: `${(i * 13) % 100}vw`,
+            rotateX: 45,
+            rotateY: i % 2 === 0 ? -15 : 15,
+            rotateZ: i * 20,
+            scale: 0.8 + (i % 3) * 0.2
+          }}
+          animate={{
+            y: "-20vh",
+            x: [`${(i * 13) % 100}vw`, `${((i * 13) + 10) % 100}vw`, `${(i * 13) % 100}vw`],
+            rotateX: [45, 55, 45],
+            rotateY: [i % 2 === 0 ? -15 : 15, 0, i % 2 === 0 ? -15 : 15],
+            rotateZ: [i * 20, i * 20 + 40, i * 20 + 80],
+            opacity: [0, 0.08, 0]
+          }}
+          transition={{
+            duration: 20 + i * 4,
+            repeat: Infinity,
+            delay: i * 1.5,
+            ease: "linear"
+          }}
+          className="absolute w-28 h-40 rounded-xl"
+          style={{ transformStyle: "preserve-3d" }}
+        >
+          <img 
+            src={`/cards/card_${val}.webp`} 
+            className="w-full h-full object-cover rounded-xl grayscale opacity-40 mix-blend-overlay" 
+            alt="" 
+          />
+        </motion.div>
+      ))}
+    </div>
+  );
 }

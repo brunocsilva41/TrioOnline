@@ -4,6 +4,9 @@ import { Player } from "../schemas/Player";
 import { Card } from "../schemas/Card";
 import { Trio } from "../schemas/Player";
 import { DeckManager } from "@trinity/core-engine";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 /**
  * PROJECT TRINITY - TrioRoom (Official TRIO Rules)
@@ -26,6 +29,7 @@ export class TrioRoom extends Room<GameState> {
     private turnOrderList: string[] = [];
     private reconnectTimeout = 30000;
     private tableCardTrueValues: number[] = [];
+    private gameStartTime: number = 0;
 
     // Turn state
     private turnRevealedCards: Array<{
@@ -70,7 +74,14 @@ export class TrioRoom extends Room<GameState> {
         this.onMessage("UPDATE_SETTINGS", (c, s) => this.enqueue(c.sessionId, "UPDATE_SETTINGS", s));
         this.onMessage("EMOTE", (c, p: { emote: string }) => {
             const pl = this.state.players.get(c.sessionId);
-            if (pl) { pl.lastEmote = p.emote; pl.lastEmoteTick = this.state.currentTick; }
+            if (pl) { 
+                pl.lastEmote = p.emote; 
+                pl.lastEmoteTick = this.state.currentTick; 
+                this.broadcast("PLAYER_EMOTE", { sessionId: c.sessionId, emote: p.emote });
+            }
+        });
+        this.onMessage("NUDGE", (c, p: { targetSessionId: string }) => {
+            this.broadcast("PLAYER_NUDGED", { from: c.sessionId, to: p.targetSessionId });
         });
 
         // Game actions
@@ -216,6 +227,7 @@ export class TrioRoom extends Room<GameState> {
     }
 
     private beginPlaying() {
+        this.gameStartTime = Date.now();
         this.state.status = "playing";
         this.state.round = 1;
         const idx = Math.floor(Math.random() * this.turnOrderList.length);
@@ -322,11 +334,12 @@ export class TrioRoom extends Room<GameState> {
     }
 
     /**
-     * Auto-reveal the player's own ponta card if it matches and completes a trio.
+     * Auto-reveal the player's own ponta card if it matches.
+     * Recursively calls itself if another match is found, to automatically pull multiple cards if available.
      */
     private tryAutoTrio(activeSid: string) {
         const matching = this.turnRevealedCards.filter(c => c.value === this.turnMatchValue);
-        if (matching.length < 2) return; // Need at least 2 revealed to auto-complete
+        if (matching.length >= 3) return; // Already trio
 
         const pontas = this.getPlayerPontas(activeSid);
         if (!pontas) return;
@@ -355,23 +368,37 @@ export class TrioRoom extends Room<GameState> {
         this.log(`AUTO_REVEAL:${activeSid}:${autoPosition}:${card.value}`);
         this.turnRevealedCards.push({ cardId: card.id, value: card.value, source: "hand", ownerSessionId: activeSid, tableIndex: -1 });
 
-        // Now we have 3+ matching → TRIO
-        const allMatching = this.turnRevealedCards.filter(c => c.value === this.turnMatchValue);
+        // Check if we reached 3
+        const newMatching = this.turnRevealedCards.filter(c => c.value === this.turnMatchValue);
+        if (newMatching.length >= 3) {
+            this.handleTrioComplete(activeSid, newMatching);
+        } else {
+            // Try again recursively to pull a second matching card if it's now on the ponta
+            this.tryAutoTrio(activeSid);
+        }
+    }
+
+    private handleTrioComplete(activeSid: string, matching: any[]) {
+        if (this.turnLocked) return;
+        const ap = this.state.players.get(activeSid);
+        const pName = ap ? ap.displayName : "Alguém";
+        this.broadcast("TRIO_CINEMATIC", { sid: activeSid, value: this.turnMatchValue, playerName: pName });
+        
         this.log(`TRIO_COMPLETE:${activeSid}:${this.turnMatchValue}`);
         this.turnLocked = true;
         this.clock.setTimeout(() => {
-            this.collectTrio(activeSid, allMatching);
+            this.collectTrio(activeSid, matching);
             this.turnLocked = false;
-            const ap = this.state.players.get(activeSid);
-            if (ap) {
-                const has7 = ap.trios.toArray().some((t: Trio) => t.value === 7);
+            const ap2 = this.state.players.get(activeSid);
+            if (ap2) {
+                const has7 = ap2.trios.toArray().some((t: Trio) => t.value === 7);
                 if (has7) { this.endGame(activeSid, "TRIO_OF_SEVENS"); return; }
-                if (ap.trios.length >= TrioRoom.TRIOS_TO_WIN) { this.endGame(activeSid, "THREE_TRIOS"); return; }
+                if (ap2.trios.length >= TrioRoom.TRIOS_TO_WIN) { this.endGame(activeSid, "THREE_TRIOS"); return; }
             }
             this.turnRevealedCards = [];
             this.turnMatchValue = null;
-            this.state.expirationTick = this.state.currentTick + TrioRoom.TURN_TICKS;
-        }, 1500);
+            this.advanceTurn();
+        }, 3500); // Increased delay for cinematic animation
     }
 
     private processReveal(activeSid: string, cardId: number, value: number, source: "table" | "hand", ownerSid: string, tableIdx: number) {
@@ -380,6 +407,9 @@ export class TrioRoom extends Room<GameState> {
         if (this.turnMatchValue === null) {
             this.turnMatchValue = value;
             this.log(`MATCH_TARGET:${value}`);
+            
+            // Try auto trio on first reveal as well (if player has 2 matching cards on pontas)
+            this.tryAutoTrio(activeSid);
             return;
         }
 
@@ -396,40 +426,15 @@ export class TrioRoom extends Room<GameState> {
         }
 
         // MATCH
-        const matching = this.turnRevealedCards.filter(c => c.value === this.turnMatchValue);
-
-        // Check if auto-trio is possible (player has matching ponta)
-        if (matching.length === 2) {
-            this.tryAutoTrio(activeSid);
-            if (this.turnLocked) return; // Auto-trio fired
-        }
-
-        if (matching.length >= 3) {
-            // TRIO!
-            this.log(`TRIO_COMPLETE:${activeSid}:${this.turnMatchValue}`);
-            this.turnLocked = true;
-
-            this.clock.setTimeout(() => {
-                this.collectTrio(activeSid, matching);
-                this.turnLocked = false;
-
-                // Check win
-                const ap = this.state.players.get(activeSid);
-                if (ap) {
-                    const has7 = ap.trios.toArray().some((t: Trio) => t.value === 7);
-                    if (has7) { this.endGame(activeSid, "TRIO_OF_SEVENS"); return; }
-                    if (ap.trios.length >= TrioRoom.TRIOS_TO_WIN) { this.endGame(activeSid, "THREE_TRIOS"); return; }
-                }
-
-                // Reset for continued play
-                this.turnRevealedCards = [];
-                this.turnMatchValue = null;
-                this.state.expirationTick = this.state.currentTick + TrioRoom.TURN_TICKS;
-            }, 1500);
-            return;
-        }
-
         this.log(`MATCH:${activeSid}:${value}`);
+        
+        // Always try auto-trio when a match happens
+        this.tryAutoTrio(activeSid);
+
+        const matching = this.turnRevealedCards.filter(c => c.value === this.turnMatchValue);
+        if (matching.length >= 3 && !this.turnLocked) {
+            this.handleTrioComplete(activeSid, matching);
+        }
     }
 
     private collectTrio(sid: string, cards: typeof this.turnRevealedCards) {
@@ -460,6 +465,13 @@ export class TrioRoom extends Room<GameState> {
         trio.value = cards[0].value;
         player.trios.push(trio);
         player.score = player.trios.length;
+        
+        if (player.userId && !player.userId.startsWith("Guest_")) {
+            prisma.user.update({
+                where: { id: player.userId },
+                data: { total_trios: { increment: 1 } }
+            }).catch(e => console.error("Error updating trio stat", e));
+        }
     }
 
     private hideAllRevealed() {
@@ -493,6 +505,22 @@ export class TrioRoom extends Room<GameState> {
         this.state.status = "finished";
         this.state.activePlayerSessionId = winner;
         this.log(`GAME_OVER:${winner}:${reason}`);
+        
+        const playtimeSecs = Math.floor((Date.now() - this.gameStartTime) / 1000);
+        
+        for (const [sid, player] of this.state.players.entries()) {
+            if (player.userId && !player.userId.startsWith("Guest_")) {
+                const isWinner = sid === winner;
+                prisma.user.update({
+                    where: { id: player.userId },
+                    data: {
+                        total_matches: { increment: 1 },
+                        total_wins: { increment: isWinner ? 1 : 0 },
+                        total_playtime_seconds: { increment: playtimeSecs }
+                    }
+                }).catch(e => console.error("Error updating end game stats", e));
+            }
+        }
     }
 
     // ────────────────────────────────────────────
@@ -515,14 +543,22 @@ export class TrioRoom extends Room<GameState> {
     // ────────────────────────────────────────────
 
     onJoin(client: Client, options: any) {
+        // If game already started and not a reconnection, reject (though lock() handles most cases)
+        if (this.state.status !== "waiting") {
+            throw new Error("Game already in progress");
+        }
+
         const p = new Player();
         p.sessionId = client.sessionId;
         p.userId = options.userId || `Guest_${client.sessionId.substring(0, 4)}`;
         p.displayName = options.displayName || p.userId;
         p.avatarUrl = options.avatarUrl || "";
+
         if (this.state.players.size === 0) {
             p.isHost = true; p.isReady = true;
             this.state.hostSessionId = client.sessionId;
+            // Update metadata with the actual host name for the listing
+            this.setMetadata({ hostName: p.displayName });
         }
         const occupied = new Set<number>();
         this.state.players.forEach(x => occupied.add(x.seatingPosition));

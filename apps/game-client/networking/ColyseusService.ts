@@ -19,6 +19,7 @@ interface SavedSession {
   roomId: string;
   sessionId: string;
   displayName: string;
+  reconnectionToken?: string;
 }
 
 class ColyseusService {
@@ -37,6 +38,7 @@ class ColyseusService {
       roomId: this.room.id,
       sessionId: this.room.sessionId,
       displayName: localStorage.getItem("trinity_name") || "Player",
+      reconnectionToken: this.room.reconnectionToken,
     };
     try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(data)); } catch {}
   }
@@ -54,10 +56,14 @@ class ColyseusService {
 
   public async reconnectToSession(saved: SavedSession): Promise<boolean> {
     try {
-      // Try to rejoin the room by ID with the same display name
-      this.room = await this.client.joinById(saved.roomId, {
-        displayName: saved.displayName,
-      });
+      if (saved.reconnectionToken) {
+        this.room = await this.client.reconnect(saved.reconnectionToken);
+      } else {
+        // Fallback for older sessions without token
+        this.room = await this.client.joinById(saved.roomId, {
+          displayName: saved.displayName,
+        });
+      }
       this.setupSync();
       useGameStore.getState().setMySessionId(this.room.sessionId);
       this.saveSession();
@@ -150,6 +156,7 @@ class ColyseusService {
       this.room = await this.client.joinOrCreate("trio_room", {
         displayName: options.displayName || "Player",
         userId: options.userId,
+        hostName: options.displayName || "Player", // Ensure hostName is set if room is created
       });
 
       this.setupSync();
@@ -195,6 +202,10 @@ class ColyseusService {
 
   public sendEmote(emote: string) {
     this.room?.send("EMOTE", { emote });
+  }
+
+  public sendNudge(targetSessionId: string) {
+    this.room?.send("NUDGE", { targetSessionId });
   }
 
   public sendRevealTableCard(cardIndex: number) {
@@ -438,6 +449,18 @@ class ColyseusService {
       this.room = null;
       this.clearSession();
       store().resetGame();
+    });
+
+    this.room.onMessage("PLAYER_NUDGED", (payload: { from: string; to: string }) => {
+      store().triggerNudge(payload.from, payload.to);
+    });
+
+    this.room.onMessage("PLAYER_EMOTE", (payload: { sessionId: string; emote: string }) => {
+      store().triggerEmote(payload.sessionId, payload.emote);
+    });
+
+    this.room.onMessage("TRIO_CINEMATIC", (payload: { sid: string; value: number; playerName: string }) => {
+      store().triggerTrioCinematic(payload.sid, payload.value, payload.playerName);
     });
 
     // Connection lifecycle
