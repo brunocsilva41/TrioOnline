@@ -2,9 +2,11 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "../../store/useGameStore";
+import { usePreloader } from "../AssetPreloader";
 
 export default function CountdownScreen() {
   const countdown = useGameStore((s) => s.countdown);
+  const { isReady, progress } = usePreloader();
 
   return (
     <motion.div
@@ -17,7 +19,21 @@ export default function CountdownScreen() {
       <div className="absolute inset-0 bg-[#020617]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_rgba(52,211,153,0.1)_0%,_transparent_50%)]" />
 
-      {/* Countdown number */}
+      {/* Assets Loading Indicator */}
+      {!isReady && (
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+          <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
+            <motion.div 
+              className="h-full bg-emerald-500"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="text-[10px] font-black tracking-[0.3em] text-emerald-500/50 uppercase">
+            Carregando Ativos... {Math.round(progress)}%
+          </span>
+        </div>
+      )}
       <AnimatePresence mode="wait">
         <motion.div
           key={countdown}

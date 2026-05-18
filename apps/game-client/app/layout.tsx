@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AssetPreloader from "../components/AssetPreloader";
 
 export const metadata: Metadata = {
   title: "Trio Online - Trinity",
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-slate-950 text-white overflow-hidden">
-        {children}
+        <AssetPreloader>
+          {children}
+        </AssetPreloader>
       </body>
     </html>
   );
