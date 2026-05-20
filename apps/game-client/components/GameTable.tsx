@@ -162,8 +162,9 @@ const GameTable: React.FC = memo(() => {
   const hostSid = useGameStore((s) => s.hostSessionId);
 
   const playerList = useMemo(() => Object.values(players), [players]);
-  const opponents = useMemo(() => playerList.filter(p => p.sessionId !== mySid), [playerList, mySid]);
-  const isMyTurn = activeSid === mySid;
+  const isObserver = useMemo(() => !players[mySid], [players, mySid]);
+  const opponents = useMemo(() => isObserver ? playerList : playerList.filter(p => p.sessionId !== mySid), [playerList, mySid, isObserver]);
+  const isMyTurn = activeSid === mySid && !isObserver;
   const activeName = activeSid ? players[activeSid]?.displayName : "";
   const myPlayer = players[mySid];
   const isHost = mySid === hostSid;
@@ -314,7 +315,12 @@ const GameTable: React.FC = memo(() => {
               </motion.div>
             )}
           </AnimatePresence>
-          {isHost ? (
+          {isObserver ? (
+             <button onClick={() => colyseusService.leaveRoom()}
+             className="px-2 py-1 ml-2 rounded bg-amber-900/30 border border-amber-500/20 text-[8px] font-bold text-amber-400/70 hover:bg-amber-900/50 hover:text-amber-300 transition-all">
+             Sair da Observação
+           </button>
+          ) : isHost ? (
             <div className="flex items-center gap-1.5 ml-2">
               <button onClick={() => colyseusService.leaveRoom()}
                 className="px-2 py-1 rounded border border-white/20 text-[8px] font-bold text-white/70 hover:bg-white/10 hover:text-white transition-all">
@@ -402,10 +408,12 @@ const GameTable: React.FC = memo(() => {
           <div className="flex items-center justify-center gap-3 mb-1.5">
             <div className="flex items-center gap-1.5">
               <div className="h-px w-4 bg-white/10" />
-              <span className="text-[8px] font-bold tracking-[0.15em] text-white/20 uppercase">Sua Mão</span>
+              <span className="text-[8px] font-bold tracking-[0.15em] text-white/20 uppercase">
+                {isObserver ? "Modo Espectador" : "Sua Mão"}
+              </span>
               <div className="h-px w-4 bg-white/10" />
             </div>
-            {myPlayer?.trios?.length > 0 && (
+            {!isObserver && myPlayer?.trios?.length > 0 && (
               <div className="flex items-center gap-1.5 ml-1">
                 {myPlayer.trios.map((t, i) => (
                   <motion.div key={i} initial={{ scale: 0 }} animate={{ scale: 1 }}
@@ -420,7 +428,13 @@ const GameTable: React.FC = memo(() => {
               </div>
             )}
           </div>
-          {myHand.length > 0 ? (
+          {isObserver ? (
+            <div className="text-center py-4">
+              <span className="text-[10px] font-black text-amber-400/40 uppercase tracking-[0.2em] animate-pulse">
+                Você está observando a partida...
+              </span>
+            </div>
+          ) : myHand.length > 0 ? (
             <div className="flex items-end justify-center">
               {myHand.map((card, i) => {
                 const rot = getHandRot(i, myHand.length);

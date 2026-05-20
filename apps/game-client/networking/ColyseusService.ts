@@ -107,11 +107,13 @@ class ColyseusService {
   public async joinRoom(roomId: string, options: {
     displayName?: string;
     userId?: string;
+    isObserver?: boolean;
   } = {}) {
     try {
       this.room = await this.client.joinById(roomId, {
         displayName: options.displayName || "Player",
         userId: options.userId,
+        isObserver: options.isObserver,
       });
 
       this.setupSync();
@@ -125,9 +127,17 @@ class ColyseusService {
     }
   }
 
+  public async observeRoom(roomId: string, options: {
+    displayName?: string;
+    userId?: string;
+  } = {}) {
+    return this.joinRoom(roomId, { ...options, isObserver: true });
+  }
+
   public async joinByCode(code: string, options: {
     displayName?: string;
     userId?: string;
+    isObserver?: boolean;
   } = {}) {
     try {
       const res = await fetch(`${SERVER_ENDPOINTS.httpUrl}/join-by-code`, {

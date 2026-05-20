@@ -50,7 +50,8 @@ export class TrioRoom extends Room<GameState> {
         const maxPlayers = Math.min(8, Math.max(2, options.maxPlayers || 8));
         this.state.maxPlayers = maxPlayers;
         this.state.minPlayers = options.minPlayers || 2;
-        this.maxClients = maxPlayers;
+        // Increase maxClients to allow spectators beyond players
+        this.maxClients = 25; 
 
         // Every room gets a code (for sharing). Private rooms are hidden from listing.
         this.state.roomCode = this.generateRoomCode();
@@ -172,7 +173,7 @@ export class TrioRoom extends Room<GameState> {
     private startCountdown() {
         this.state.status = "countdown";
         this.state.countdown = 3;
-        this.lock();
+        // Do NOT lock the room to allow observers to join ongoing matches
         let c = 3;
         const iv = this.clock.setInterval(() => {
             c--; this.state.countdown = c;
@@ -543,9 +544,21 @@ export class TrioRoom extends Room<GameState> {
     // ────────────────────────────────────────────
 
     onJoin(client: Client, options: any) {
-        // If game already started and not a reconnection, reject (though lock() handles most cases)
+        if (options.isObserver) {
+            this.state.spectatorCount++;
+            this.log(`OBSERVER_JOINED:${client.sessionId}`);
+            // Send initial metadata update
+            this.setMetadata({ playerCount: this.state.players.size, status: this.state.status });
+            return;
+        }
+
+        // If game already started and not a reconnection, reject
         if (this.state.status !== "waiting") {
             throw new Error("Game already in progress");
+        }
+
+        if (this.state.players.size >= this.state.maxPlayers) {
+            throw new Error("Room is full");
         }
 
         const p = new Player();
@@ -572,7 +585,11 @@ export class TrioRoom extends Room<GameState> {
 
     async onLeave(client: Client, consented: boolean) {
         const p = this.state.players.get(client.sessionId);
-        if (!p) return;
+        if (!p) {
+            // Must be an observer
+            this.state.spectatorCount = Math.max(0, this.state.spectatorCount - 1);
+            return;
+        }
         p.isOnline = false;
         if (this.state.status === "waiting") { this.removePlayer(client.sessionId); return; }
         try {

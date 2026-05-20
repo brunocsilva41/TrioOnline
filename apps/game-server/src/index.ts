@@ -216,7 +216,7 @@ app.get("/rooms", async (_req, res) => {
     try {
         const rooms = await matchMaker.query({ name: "trio_room" });
         const publicRooms = rooms
-            .filter(r => !r.private && !r.locked)
+            .filter(r => !r.private) // Allow locked rooms (ongoing games) to be listed for observers
             .map(r => ({
                 roomId: r.roomId,
                 roomCode: r.metadata?.roomCode || "",
@@ -225,8 +225,7 @@ app.get("/rooms", async (_req, res) => {
                 status: r.metadata?.status || "waiting",
                 hostName: r.metadata?.hostName || "Unknown",
             }));
-        res.json({ rooms: publicRooms
-        });
+        res.json({ rooms: publicRooms });
     } catch (e) {
         res.json({ rooms: [] });
     }

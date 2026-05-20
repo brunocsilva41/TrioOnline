@@ -8,6 +8,7 @@ import AuthWidget from "./AuthWidget";
 import LeaderboardWidget from "./LeaderboardWidget";
 import CardImage from "../CardImage";
 import { ServerStatus, useServerStatus } from "../../hooks/useServerStatus";
+import { Eye } from "lucide-react";
 
 export default function LobbyScreen() {
   const [view, setView] = useState<"main" | "create" | "join" | "browse">("main");
@@ -103,6 +104,18 @@ export default function LobbyScreen() {
       await colyseusService.joinRoom(roomId, { displayName, userId });
     } catch (e: any) {
       setError(e.message || "Failed to join room");
+    }
+    setLoading(false);
+  };
+
+  const handleObserveRoom = async (roomId: string) => {
+    if (!assertServerOnline()) return;
+    setError("");
+    setLoading(true);
+    try {
+      await colyseusService.observeRoom(roomId, { displayName, userId });
+    } catch (e: any) {
+      setError(e.message || "Failed to observe room");
     }
     setLoading(false);
   };
@@ -266,6 +279,7 @@ export default function LobbyScreen() {
                   <BrowseRoomsPanel
                     rooms={availableRooms}
                     onJoin={handleJoinRoom}
+                    onObserve={handleObserveRoom}
                     onBack={() => setView("main")}
                     loading={loading}
                     serverStatus={serverStatus.status}
@@ -553,13 +567,18 @@ function JoinByCodePanel({ code, setCode, onJoin, onBack, loading, serverStatus 
   );
 }
 
-function BrowseRoomsPanel({ rooms, onJoin, onBack, loading, serverStatus }: {
+function BrowseRoomsPanel({ rooms, onJoin, onObserve, onBack, loading, serverStatus }: {
   rooms: RoomInfo[];
   onJoin: (roomId: string) => void;
+  onObserve: (roomId: string) => void;
   onBack: () => void;
   loading: boolean;
   serverStatus: ServerStatus;
 }) {
+  // Separate rooms into waiting and ongoing
+  const waitingRooms = rooms.filter(r => r.status === "waiting");
+  const ongoingRooms = rooms.filter(r => r.status !== "waiting");
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 mb-2">
@@ -568,7 +587,7 @@ function BrowseRoomsPanel({ rooms, onJoin, onBack, loading, serverStatus }: {
         <div className="h-px flex-1 bg-white/10" />
       </div>
 
-      <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scroll">
+      <div className="space-y-4 max-h-64 overflow-y-auto pr-2 custom-scroll">
         {serverStatus !== "online" ? (
           <div className="text-center py-12 bg-amber-500/[0.06] border border-amber-400/10 rounded-2xl">
             <span className="text-3xl opacity-40 mb-2 block">!</span>
@@ -582,39 +601,85 @@ function BrowseRoomsPanel({ rooms, onJoin, onBack, loading, serverStatus }: {
             <p className="text-[9px] text-white/20 mt-1">Crie a sua e convide amigos!</p>
           </div>
         ) : (
-          rooms.map((room, i) => (
-            <motion.button
-              key={room.roomId}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.05 }}
-              onClick={() => onJoin(room.roomId)}
-              disabled={loading || room.status !== "waiting"}
-              whileHover={{ scale: 1.02, backgroundColor: "rgba(16,185,129,0.1)", borderColor: "rgba(16,185,129,0.3)" }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full flex items-center justify-between bg-white/[0.03] border border-white/5
-                rounded-2xl px-5 py-4 transition-all disabled:opacity-40 group relative overflow-hidden"
-            >
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="text-left">
-                <p className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors uppercase tracking-wider">
-                  <span className="text-amber-500 mr-2 font-mono">[{room.roomCode}]</span>
-                  {room.hostName}&apos;S MATCH
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`w-1.5 h-1.5 rounded-full ${room.status === "waiting" ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`} />
-                  <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest">{room.status === "waiting" ? "Aguardando" : "Em Jogo"}</p>
-                </div>
+          <>
+            {/* Waiting Rooms */}
+            {waitingRooms.length > 0 && (
+              <div className="space-y-2">
+                {waitingRooms.map((room, i) => (
+                  <motion.button
+                    key={room.roomId}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    onClick={() => onJoin(room.roomId)}
+                    disabled={loading}
+                    whileHover={{ scale: 1.02, backgroundColor: "rgba(16,185,129,0.1)", borderColor: "rgba(16,185,129,0.3)" }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full flex items-center justify-between bg-white/[0.03] border border-white/5
+                      rounded-2xl px-5 py-4 transition-all disabled:opacity-40 group relative overflow-hidden"
+                  >
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="text-left">
+                      <p className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors uppercase tracking-wider">
+                        <span className="text-amber-500 mr-2 font-mono">[{room.roomCode}]</span>
+                        {room.hostName}&apos;S MATCH
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Aguardando</p>
+                      </div>
+                    </div>
+                    <div className="text-right flex flex-col items-end">
+                      <div className="flex items-end gap-1">
+                        <span className="text-xl font-black text-emerald-400 leading-none">{room.playerCount}</span>
+                        <span className="text-[10px] text-white/30 font-bold mb-0.5">/{room.maxPlayers}</span>
+                      </div>
+                    </div>
+                  </motion.button>
+                ))}
               </div>
-              <div className="text-right flex flex-col items-end">
-                <div className="flex items-end gap-1">
-                  <span className="text-xl font-black text-emerald-400 leading-none">{room.playerCount}</span>
-                  <span className="text-[10px] text-white/30 font-bold mb-0.5">/{room.maxPlayers}</span>
+            )}
+
+            {/* Ongoing Rooms */}
+            {ongoingRooms.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 py-1">
+                  <span className="text-[8px] font-black text-amber-500/50 uppercase tracking-[0.2em]">Partidas em Andamento</span>
+                  <div className="h-px flex-1 bg-amber-500/10" />
                 </div>
-                <p className="text-[8px] text-white/20 font-mono tracking-widest mt-1">JOGADORES</p>
+                {ongoingRooms.map((room, i) => (
+                  <div
+                    key={room.roomId}
+                    className="w-full flex items-center justify-between bg-amber-500/[0.02] border border-amber-500/10
+                      rounded-2xl px-5 py-4 group relative overflow-hidden"
+                  >
+                    <div className="text-left">
+                      <p className="text-sm font-black text-white/80 uppercase tracking-wider">
+                        <span className="text-amber-500/60 mr-2 font-mono">[{room.roomCode}]</span>
+                        {room.hostName}&apos;S MATCH
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                        <p className="text-[9px] font-mono text-amber-400/60 uppercase tracking-widest">Em Jogo</p>
+                      </div>
+                    </div>
+                    
+                    <motion.button
+                      onClick={() => onObserve(room.roomId)}
+                      disabled={loading}
+                      whileHover={{ scale: 1.05, backgroundColor: "rgba(251,191,36,0.15)" }}
+                      whileTap={{ scale: 0.95 }}
+                      className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl
+                        text-amber-400 text-[9px] font-black uppercase tracking-wider transition-colors"
+                    >
+                      <Eye size={12} />
+                      Observar
+                    </motion.button>
+                  </div>
+                ))}
               </div>
-            </motion.button>
-          ))
+            )}
+          </>
         )}
       </div>
 
