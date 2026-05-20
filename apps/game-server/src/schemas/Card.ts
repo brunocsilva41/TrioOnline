@@ -8,8 +8,8 @@ export class Card extends Schema {
     @type("uint8") id: number = 0;
 
     // Actual value (1-12). Obfuscated via filter until revealed or owned.
-    @filter(function(this: Card, client: any, value: number) {
-        return this.isRevealed || (this.ownerId && client.sessionId === this.ownerId);
+    @filter(function(this: Card, client: any, _value: number) {
+        return this.isRevealed || (!!this.ownerId && client.sessionId === this.ownerId);
     })
     @type("uint8") value: number = 0;
 
