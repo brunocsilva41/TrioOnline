@@ -7,7 +7,7 @@ import { useGameStore, RoomInfo } from "../../store/useGameStore";
 import AuthWidget from "./AuthWidget";
 import LeaderboardWidget from "./LeaderboardWidget";
 import CardImage from "../CardImage";
-import { ServerStatus, useServerStatus } from "../../hooks/useServerStatus";
+import { useServerStatus } from "../../hooks/useServerStatus";
 import { Eye } from "lucide-react";
 
 export default function LobbyScreen() {
@@ -61,7 +61,7 @@ export default function LobbyScreen() {
 
   const assertServerOnline = () => {
     if (isServerOnline) return true;
-    setError(`Servidor offline. Inicie o game-server e tente novamente.`);
+    setError(`Servidor offline. Tente novamente em instantes.`);
     void serverStatus.checkNow();
     return false;
   };
@@ -301,19 +301,6 @@ export default function LobbyScreen() {
         )}
       </motion.div>
 
-      <ServerStatusDock
-        status={serverStatus.status}
-        database={serverStatus.database}
-        latencyMs={serverStatus.latencyMs}
-        onRetry={serverStatus.checkNow}
-      />
-
-      {/* Footer & Widgets */}
-      <div className="absolute bottom-6 right-6 flex flex-col items-end text-right gap-1 text-[9px] font-mono tracking-widest text-white/20 z-10 pointer-events-none">
-        <span>TRINITY ENGINE v3.0</span>
-        <span>2-8 JOGADORES</span>
-      </div>
-
       <AuthWidget />
     </motion.div>
   );
@@ -330,7 +317,7 @@ function MainMenu({ playerName, onNameChange, onCreateRoom, onJoinCode, onBrowse
   onQuickMatch: () => void;
   loading: boolean;
   isLoggedIn: boolean;
-  serverStatus: ServerStatus;
+  serverStatus: string;
   onRetryServer: () => void;
 }) {
   const container = {
@@ -359,10 +346,10 @@ function MainMenu({ playerName, onNameChange, onCreateRoom, onJoinCode, onBrowse
           <div className="flex items-center justify-between gap-3">
             <div>
               <span className="block text-[10px] font-black uppercase tracking-[0.22em] text-amber-300">
-                {serverStatus === "checking" ? "Conectando ao servidor" : "Servidor offline"}
+                {serverStatus === "checking" ? "Conectando ao servidor..." : "Servidor em espera"}
               </span>
             </div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-amber-200/80">Testar</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-amber-200/80">Reconectar</span>
           </div>
         </motion.button>
       )}
@@ -401,7 +388,7 @@ function MainMenu({ playerName, onNameChange, onCreateRoom, onJoinCode, onBrowse
             shadow-[0_10px_40px_rgba(16,185,129,0.25)] hover:shadow-[0_15px_50px_rgba(16,185,129,0.4)]"
         >
           {serverStatus !== "online" ? (
-            "SERVIDOR OFFLINE"
+            "CONECTANDO..."
           ) : loading ? (
             <div className="flex items-center justify-center gap-2">
               <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
@@ -449,7 +436,7 @@ function CreateRoomPanel({ isPrivate, setIsPrivate, maxPlayers, setMaxPlayers, o
   onConfirm: () => void;
   onBack: () => void;
   loading: boolean;
-  serverStatus: ServerStatus;
+  serverStatus: string;
 }) {
   return (
     <div className="space-y-6">
@@ -514,7 +501,7 @@ function CreateRoomPanel({ isPrivate, setIsPrivate, maxPlayers, setMaxPlayers, o
           className="flex-[2] py-4 bg-emerald-500 hover:bg-emerald-400 rounded-2xl font-black text-black text-[10px]
             tracking-[0.2em] uppercase transition-all disabled:opacity-50 shadow-[0_10px_30px_rgba(16,185,129,0.2)]"
         >
-          {serverStatus !== "online" ? "SERVIDOR OFFLINE" : loading ? "CRIANDO..." : "CONFIRMAR"}
+          {serverStatus !== "online" ? "AGUARDE..." : loading ? "CRIANDO..." : "CONFIRMAR"}
         </motion.button>
       </div>
     </div>
@@ -527,7 +514,7 @@ function JoinByCodePanel({ code, setCode, onJoin, onBack, loading, serverStatus 
   onJoin: () => void;
   onBack: () => void;
   loading: boolean;
-  serverStatus: ServerStatus;
+  serverStatus: string;
 }) {
   return (
     <div className="space-y-5">
@@ -573,7 +560,7 @@ function BrowseRoomsPanel({ rooms, onJoin, onObserve, onBack, loading, serverSta
   onObserve: (roomId: string) => void;
   onBack: () => void;
   loading: boolean;
-  serverStatus: ServerStatus;
+  serverStatus: string;
 }) {
   // Separate rooms into waiting and ongoing
   const waitingRooms = rooms.filter(r => r.status === "waiting");
@@ -590,9 +577,9 @@ function BrowseRoomsPanel({ rooms, onJoin, onObserve, onBack, loading, serverSta
       <div className="space-y-4 max-h-64 overflow-y-auto pr-2 custom-scroll">
         {serverStatus !== "online" ? (
           <div className="text-center py-12 bg-amber-500/[0.06] border border-amber-400/10 rounded-2xl">
-            <span className="text-3xl opacity-40 mb-2 block">!</span>
-            <p className="text-xs font-bold text-amber-200/70 uppercase tracking-widest">Servidor offline</p>
-            <p className="text-[9px] text-white/25 mt-1">Inicie o game-server para listar salas.</p>
+            <span className="text-3xl opacity-40 mb-2 block">📡</span>
+            <p className="text-xs font-bold text-amber-200/70 uppercase tracking-widest">Sincronizando...</p>
+            <p className="text-[9px] text-white/25 mt-1">Buscando salas disponíveis.</p>
           </div>
         ) : rooms.length === 0 ? (
           <div className="text-center py-12 bg-white/[0.02] border border-white/5 rounded-2xl">
@@ -693,43 +680,6 @@ function BrowseRoomsPanel({ rooms, onJoin, onObserve, onBack, loading, serverSta
           Voltar
         </motion.button>
       </div>
-    </div>
-  );
-}
-
-function ServerStatusDock({ status, database, latencyMs, onRetry }: {
-  status: ServerStatus;
-  database: string;
-  latencyMs: number | null;
-  onRetry: () => void;
-}) {
-  const online = status === "online";
-  const checking = status === "checking";
-
-  return (
-    <div className="fixed left-4 bottom-4 z-40 pointer-events-none">
-      <button
-        onClick={onRetry}
-        className={`pointer-events-auto flex items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur-xl transition-all hover:scale-[1.02] ${
-          online
-            ? "border-emerald-400/20 bg-emerald-500/10"
-            : checking
-              ? "border-sky-400/20 bg-sky-500/10"
-              : "border-amber-400/20 bg-amber-500/10"
-        }`}
-      >
-        <span className={`h-2.5 w-2.5 rounded-full ${online ? "bg-emerald-400" : checking ? "bg-sky-400 animate-pulse" : "bg-amber-400"}`} />
-        <span className="text-left">
-          <span className="block text-[9px] font-black uppercase tracking-[0.22em] text-white/70">
-            {online ? "Servidor online" : checking ? "Verificando servidor" : "Servidor offline"}
-          </span>
-          {online && (
-            <span className="block text-[8px] font-mono text-white/30">
-              DB {database}{latencyMs ? ` | ${latencyMs}ms` : ""}
-            </span>
-          )}
-        </span>
-      </button>
     </div>
   );
 }
