@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { useEffect, useState } from "react";
+import CardImage from "../components/CardImage";
 
 export default function NotFound() {
   const [cardValue, setCardValue] = useState(1);
@@ -33,14 +33,14 @@ export default function NotFound() {
           className="absolute inset-0 rounded-xl overflow-hidden shadow-[0_0_30px_rgba(59,130,246,0.5)] border-2 border-blue-400"
           style={{ backfaceVisibility: "hidden" }}
         >
-          <Image src={`/cards/card_${cardValue}.webp`} alt="" fill sizes="128px" className="object-cover" />
+          <CardImage value={cardValue} className="rounded-xl" eager />
         </div>
         {/* Back */}
         <div
           className="absolute inset-0 rounded-xl overflow-hidden shadow-2xl border-2 border-slate-700"
           style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
         >
-          <Image src="/cards/trio_back_card.webp" alt="" fill sizes="128px" className="object-cover" />
+          <CardImage src="/cards/trio_back_card.webp" className="rounded-xl" eager />
         </div>
       </motion.div>
 

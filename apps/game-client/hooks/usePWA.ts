@@ -12,7 +12,7 @@ export function usePWA() {
   useEffect(() => {
     // Register Service Worker
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
+      const registerServiceWorker = () => {
         navigator.serviceWorker
           .register('/service-worker.js') // Assuming it's served from root after build
           .then((registration) => {
@@ -21,7 +21,13 @@ export function usePWA() {
           .catch((error) => {
             console.error('[PWA] ServiceWorker registration failed:', error);
           });
-      });
+      };
+
+      if (document.readyState === 'complete') {
+        registerServiceWorker();
+      } else {
+        window.addEventListener('load', registerServiceWorker, { once: true });
+      }
     }
 
     // Capture Installation Prompt

@@ -1,23 +1,9 @@
 "use client";
 
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, createContext, useContext, useMemo } from "react";
+import { CARD_ASSET_PATHS, preloadCardAsset } from "../lib/cardAssets";
 
-const ASSETS_TO_PRELOAD = [
-  "/cards/card_1.webp",
-  "/cards/card_2.webp",
-  "/cards/card_3.webp",
-  "/cards/card_4.webp",
-  "/cards/card_5.webp",
-  "/cards/card_6.webp",
-  "/cards/card_7.webp",
-  "/cards/card_8.webp",
-  "/cards/card_9.webp",
-  "/cards/card_10.webp",
-  "/cards/card_11.webp",
-  "/cards/card_12.webp",
-  "/cards/trio_back_card.webp",
-  // Add other critical assets here
-];
+const ASSETS_TO_PRELOAD = [...CARD_ASSET_PATHS];
 
 interface PreloadContextType {
   isReady: boolean;
@@ -28,6 +14,11 @@ const PreloadContext = createContext<PreloadContextType>({ isReady: false, progr
 
 export const usePreloader = () => useContext(PreloadContext);
 
+/**
+ * PROJECT TRINITY - Asset Preloader
+ * Orchestrates preloading of all critical game assets (cards).
+ * Blocks interaction until essential assets are ready to prevent flickering.
+ */
 export default function AssetPreloader({ children }: { children: React.ReactNode }) {
   const [loadedCount, setLoadedCount] = useState(0);
   const [isReady, setIsReady] = useState(false);
@@ -47,16 +38,19 @@ export default function AssetPreloader({ children }: { children: React.ReactNode
       if (mounted) {
         setLoadedCount(loaded);
         if (loaded === assets.length) {
-          setIsReady(true);
+          // Add a small delay for safety and smooth transition
+          setTimeout(() => {
+            if (mounted) setIsReady(true);
+          }, 100);
         }
       }
     };
 
+    // Parallel preloading with decoding
     assets.forEach((src) => {
-      const img = new Image();
-      img.src = src;
-      img.onload = onLoad;
-      img.onerror = onLoad; // Count as loaded even if error to avoid blocking
+      preloadCardAsset(src)
+        .catch(() => undefined)
+        .finally(onLoad);
     });
 
     return () => {
@@ -64,12 +58,16 @@ export default function AssetPreloader({ children }: { children: React.ReactNode
     };
   }, []);
 
-  const progress = ASSETS_TO_PRELOAD.length > 0 
-    ? (loadedCount / ASSETS_TO_PRELOAD.length) * 100 
-    : 100;
+  const progress = useMemo(() => {
+    return ASSETS_TO_PRELOAD.length > 0 
+      ? (loadedCount / ASSETS_TO_PRELOAD.length) * 100 
+      : 100;
+  }, [loadedCount]);
+
+  const value = useMemo(() => ({ isReady, progress }), [isReady, progress]);
 
   return (
-    <PreloadContext.Provider value={{ isReady, progress }}>
+    <PreloadContext.Provider value={value}>
       {children}
     </PreloadContext.Provider>
   );

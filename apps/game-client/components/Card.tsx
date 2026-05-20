@@ -2,9 +2,9 @@
 
 import React, { memo, forwardRef } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { CardData, useGameStore } from "../store/useGameStore";
 import { colyseusService } from "../networking/ColyseusService";
+import CardImage from "./CardImage";
 
 interface CardProps {
   cardData: CardData;
@@ -74,13 +74,11 @@ const Card = memo(forwardRef<HTMLDivElement, CardProps>(({ cardData, index, loca
           style={{ backfaceVisibility: "hidden" }}
         >
           {cardData.value > 0 && (
-            <Image
-              src={`/cards/card_${cardData.value}.webp`}
+            <CardImage
+              value={cardData.value}
               alt={`Card ${cardData.value}`}
-              fill
-              sizes="100px"
-              className="object-cover rounded-lg"
-              priority={location === "hand"}
+              className="rounded-lg"
+              eager
             />
           )}
           {/* Glow on reveal */}
@@ -103,12 +101,11 @@ const Card = memo(forwardRef<HTMLDivElement, CardProps>(({ cardData, index, loca
           className="absolute inset-0 rounded-lg overflow-hidden shadow-lg"
           style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
         >
-          <Image
+          <CardImage
             src="/cards/trio_back_card.webp"
             alt="Card back"
-            fill
-            sizes="100px"
-            className="object-cover rounded-lg"
+            className="rounded-lg"
+            eager
           />
           {/* Interactive glow pulse */}
           {canInteract && (

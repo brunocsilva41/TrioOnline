@@ -1,12 +1,12 @@
 "use client";
 
-import React, { memo, useMemo, useState, useEffect } from "react";
+import React, { memo, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
 import { useGameStore, PlayerData } from "../store/useGameStore";
 import { colyseusService } from "../networking/ColyseusService";
 import { usePreloader } from "./AssetPreloader";
 import Card from "./Card";
+import CardImage from "./CardImage";
 import TrioCinematic from "./game/TrioCinematic";
 import EmoteRain from "./game/EmoteRain";
 
@@ -52,7 +52,7 @@ function OpponentSeat({ player, isActive, isMyTurn }: {
           {player.trios.map((t, i) => (
             <motion.div key={i} initial={{ scale: 0, x: 20 }} animate={{ scale: 1, x: 0 }}
               className="relative w-8 h-[48px] rounded-md overflow-hidden ring-2 ring-amber-500/60 shadow-[0_5px_15px_rgba(251,191,36,0.3)]">
-              <Image src={`/cards/card_${t.value}.webp`} alt="" fill sizes="32px" className="object-cover" />
+              <CardImage value={t.value} className="rounded-md" eager />
               <div className="absolute top-0 right-0 bg-amber-400 text-black text-[6px] font-black px-1 rounded-bl shadow-md">T</div>
             </motion.div>
           ))}
@@ -128,7 +128,7 @@ function OpponentSeat({ player, isActive, isMyTurn }: {
                 <motion.div key={card.id} initial={{ scale: 0, rotateY: 180 }} animate={{ scale: 1, rotateY: 0 }}
                   exit={{ scale: 0, rotateY: -180 }} transition={{ type: "spring", stiffness: 200, damping: 15 }}
                   className="relative w-10 h-[60px] rounded-md overflow-hidden shadow-[0_5px_15px_rgba(0,0,0,0.5)] ring-2 ring-amber-400/70">
-                  <Image src={`/cards/card_${card.value}.webp`} alt={`${card.value}`} fill sizes="40px" className="object-cover" />
+                  <CardImage value={card.value} alt={`${card.value}`} className="rounded-md" eager />
                   <motion.div initial={{ opacity: 0.6 }} animate={{ opacity: 0 }} transition={{ duration: 1.5 }}
                     className="absolute inset-0 bg-amber-300/30 pointer-events-none" />
                 </motion.div>
@@ -411,7 +411,7 @@ const GameTable: React.FC = memo(() => {
                   <motion.div key={i} initial={{ scale: 0 }} animate={{ scale: 1 }}
                     className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/10 border border-amber-400/25">
                     <div className="w-5 h-[30px] rounded-sm overflow-hidden">
-                      <Image src={`/cards/card_${t.value}.webp`} alt="" width={20} height={30} className="w-full h-full object-cover" />
+                      <CardImage value={t.value} className="rounded-sm" eager />
                     </div>
                     <span className="text-[8px] font-black text-amber-400">×3</span>
                   </motion.div>
@@ -432,7 +432,7 @@ const GameTable: React.FC = memo(() => {
                     style={{ marginLeft: i > 0 ? "-6px" : "0", zIndex: i }}
                     className="flex-shrink-0">
                     <div className="w-[52px] h-[78px] sm:w-[60px] sm:h-[90px] md:w-[68px] md:h-[102px] rounded-md overflow-hidden shadow-lg shadow-black/40 border border-white/10 hover:border-white/25 transition-colors relative">
-                      <Image src={`/cards/card_${card.value}.webp`} alt={`${card.value}`} fill sizes="68px" className="object-cover" />
+                      <CardImage value={card.value} alt={`${card.value}`} className="rounded-md" eager />
                     </div>
                   </motion.div>
                 );
@@ -515,10 +515,10 @@ function TableCardShadows() {
           className="absolute w-28 h-40 rounded-xl"
           style={{ transformStyle: "preserve-3d" }}
         >
-          <img 
-            src={`/cards/card_${val}.webp`} 
-            className="w-full h-full object-cover rounded-xl grayscale opacity-40 mix-blend-overlay" 
-            alt="" 
+          <CardImage
+            value={val}
+            className="rounded-xl grayscale opacity-40 mix-blend-overlay"
+            eager={false}
           />
         </motion.div>
       ))}

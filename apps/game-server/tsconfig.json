@@ -3,7 +3,12 @@
   "compilerOptions": {
     "outDir": "dist",
     "skipLibCheck": true,
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "baseUrl": ".",
+    "paths": {
+      "@trinity/core-engine": ["../../packages/core-engine/src/index.ts"],
+      "@trinity/core-engine/*": ["../../packages/core-engine/src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["src/**/*.test.ts"]

@@ -1,5 +1,6 @@
 import { Client, Room } from "colyseus.js";
 import { useGameStore, PlayerData, CardData, AppPhase } from "../store/useGameStore";
+import { SERVER_ENDPOINTS } from "../lib/serverEndpoint";
 
 /**
  * PROJECT TRINITY - ColyseusService
@@ -8,12 +9,12 @@ import { useGameStore, PlayerData, CardData, AppPhase } from "../store/useGameSt
  * and real-time state synchronization with Zustand store.
  */
 
-// Accept any URL format (https://, wss://, ws://, http://) and derive both WS and HTTP
-const RAW_URL = (process.env.NEXT_PUBLIC_GAME_SERVER_URL || "ws://localhost:2567").replace(/\/$/, "");
-const SERVER_URL = RAW_URL.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
-const HTTP_URL = RAW_URL.replace(/^wss:\/\//, "https://").replace(/^ws:\/\//, "http://");
-
 const SESSION_KEY = "trinity_session";
+
+function normalizeConnectionError(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error;
+  return new Error(`${fallback}. Verifique se o servidor está online em ${SERVER_ENDPOINTS.httpUrl}.`);
+}
 
 interface SavedSession {
   roomId: string;
@@ -27,7 +28,7 @@ class ColyseusService {
   private room: Room | null = null;
 
   constructor() {
-    this.client = new Client(SERVER_URL);
+    this.client = new Client(SERVER_ENDPOINTS.wsUrl);
   }
 
   // ── Session persistence ──
@@ -98,8 +99,8 @@ class ColyseusService {
       this.saveSession();
       return this.room;
     } catch (e) {
-      console.error("[ColyseusService] Create room failed:", e);
-      throw e;
+      if (process.env.NODE_ENV !== "development") console.error("[ColyseusService] Create room failed:", e);
+      throw normalizeConnectionError(e, "Não foi possível criar a sala");
     }
   }
 
@@ -119,8 +120,8 @@ class ColyseusService {
       this.saveSession();
       return this.room;
     } catch (e) {
-      console.error("[ColyseusService] Join room failed:", e);
-      throw e;
+      if (process.env.NODE_ENV !== "development") console.error("[ColyseusService] Join room failed:", e);
+      throw normalizeConnectionError(e, "Não foi possível entrar na sala");
     }
   }
 
@@ -129,7 +130,7 @@ class ColyseusService {
     userId?: string;
   } = {}) {
     try {
-      const res = await fetch(`${HTTP_URL}/join-by-code`, {
+      const res = await fetch(`${SERVER_ENDPOINTS.httpUrl}/join-by-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: code.toUpperCase() }),
@@ -143,8 +144,8 @@ class ColyseusService {
       const { roomId } = await res.json();
       return this.joinRoom(roomId, options);
     } catch (e) {
-      console.error("[ColyseusService] Join by code failed:", e);
-      throw e;
+      if (process.env.NODE_ENV !== "development") console.error("[ColyseusService] Join by code failed:", e);
+      throw normalizeConnectionError(e, "Não foi possível entrar com este código");
     }
   }
 
@@ -165,19 +166,19 @@ class ColyseusService {
       this.saveSession();
       return this.room;
     } catch (e) {
-      console.error("[ColyseusService] Quick match failed:", e);
-      throw e;
+      if (process.env.NODE_ENV !== "development") console.error("[ColyseusService] Quick match failed:", e);
+      throw normalizeConnectionError(e, "Não foi possível iniciar uma partida rápida");
     }
   }
 
   public async fetchRooms() {
     try {
-      const res = await fetch(`${HTTP_URL}/rooms`);
+      const res = await fetch(`${SERVER_ENDPOINTS.httpUrl}/rooms`);
       const data = await res.json();
       useGameStore.getState().setAvailableRooms(data.rooms || []);
       return data.rooms;
     } catch (e) {
-      console.error("[ColyseusService] Fetch rooms failed:", e);
+      if (process.env.NODE_ENV !== "development") console.error("[ColyseusService] Fetch rooms failed:", e);
       return [];
     }
   }

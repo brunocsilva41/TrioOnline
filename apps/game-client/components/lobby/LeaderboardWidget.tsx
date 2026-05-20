@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const HTTP_URL = (process.env.NEXT_PUBLIC_GAME_SERVER_URL || "ws://localhost:2567").replace(/^wss:\/\//, "https://").replace(/^ws:\/\//, "http://").replace(/\/$/, "");
+import { SERVER_ENDPOINTS, getRetryDelayMs } from "../../lib/serverEndpoint";
 
 interface LeaderboardEntry {
   id: string;
@@ -21,26 +20,40 @@ export default function LeaderboardWidget() {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
+    let failureCount = 0;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let disposed = false;
+
     const fetchLeaderboard = async () => {
       try {
-        const res = await fetch(`${HTTP_URL}/api/leaderboard`);
+        const res = await fetch(`${SERVER_ENDPOINTS.httpUrl}/api/leaderboard`);
         if (!res.ok) throw new Error("API error");
         const data = await res.json();
+        if (disposed) return;
         if (data.leaderboard) {
           setLeaderboard(data.leaderboard);
           setError(null);
         }
+        failureCount = 0;
       } catch (e) {
-        console.error("Failed to fetch leaderboard", e);
+        if (disposed) return;
+        failureCount += 1;
+        if (process.env.NODE_ENV !== "development") {
+          console.error("Failed to fetch leaderboard", e);
+        }
         setError("Servidor Offline");
       } finally {
+        if (disposed) return;
         setLoading(false);
+        timeoutId = setTimeout(fetchLeaderboard, failureCount > 0 ? getRetryDelayMs(failureCount) : 10000);
       }
     };
 
     fetchLeaderboard();
-    const interval = setInterval(fetchLeaderboard, 10000); // Update every 10s
-    return () => clearInterval(interval);
+    return () => {
+      disposed = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   return (

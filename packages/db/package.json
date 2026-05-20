@@ -4,10 +4,11 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "build": "prisma generate",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:migrate:deploy": "prisma migrate deploy"
+    "build": "node scripts/with-env.cjs prisma generate",
+    "db:generate": "node scripts/with-env.cjs prisma generate",
+    "db:push": "node scripts/with-env.cjs prisma db push",
+    "db:migrate": "node scripts/with-env.cjs prisma migrate dev",
+    "db:migrate:deploy": "node scripts/with-env.cjs prisma migrate deploy"
   },
   "dependencies": {
     "@prisma/client": "5.22.0"

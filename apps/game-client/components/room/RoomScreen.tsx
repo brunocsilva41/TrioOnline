@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "../../store/useGameStore";
 import { colyseusService } from "../../networking/ColyseusService";
@@ -13,10 +13,12 @@ export default function RoomScreen() {
   const isPrivate = useGameStore((s) => s.isPrivate);
   const hostSessionId = useGameStore((s) => s.hostSessionId);
   const mySessionId = useGameStore((s) => s.mySessionId);
+  const [copiedInvite, setCopiedInvite] = useState(false);
 
   const isHost = mySessionId === hostSessionId;
   const playerList = useMemo(() => Object.values(players), [players]);
   const allReady = playerList.length >= 2 && playerList.every((p) => p.isHost || p.isReady);
+  const readyCount = playerList.filter((p) => p.isHost || p.isReady).length;
 
   const handleToggleReady = () => colyseusService.sendReady();
   const handleStartGame = () => colyseusService.sendStartGame();
@@ -25,7 +27,13 @@ export default function RoomScreen() {
 
   const copyCode = () => {
     if (roomCode) {
-      navigator.clipboard.writeText(roomCode);
+      const inviteText = `Entre na minha sala do Trio Online: ${roomCode}`;
+      navigator.clipboard.writeText(inviteText).then(() => {
+        setCopiedInvite(true);
+        window.setTimeout(() => setCopiedInvite(false), 1800);
+      }).catch(() => {
+        setCopiedInvite(false);
+      });
     }
   };
 
@@ -113,7 +121,9 @@ export default function RoomScreen() {
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
               <span className="text-3xl sm:text-4xl font-black tracking-[0.3em] text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.3)]">{roomCode}</span>
-              <span className="text-[9px] font-bold text-white/40 group-hover:text-amber-300 tracking-widest uppercase">COPIAR</span>
+              <span className="text-[9px] font-bold text-white/40 group-hover:text-amber-300 tracking-widest uppercase">
+                {copiedInvite ? "COPIADO" : "COPIAR"}
+              </span>
             </motion.button>
           </div>
         )}
@@ -121,6 +131,17 @@ export default function RoomScreen() {
         <p className="text-[10px] sm:text-xs text-white/40 font-mono tracking-[0.3em] mt-6">
           <span className="text-emerald-400">{playerList.length}</span> / {maxPlayers} JOGADORES
         </p>
+        <div className="mt-3 flex items-center justify-center gap-2">
+          <div className="h-1.5 w-32 overflow-hidden rounded-full bg-white/10">
+            <motion.div
+              className="h-full rounded-full bg-emerald-400"
+              animate={{ width: `${playerList.length ? (readyCount / playerList.length) * 100 : 0}%` }}
+            />
+          </div>
+          <span className="text-[9px] font-mono text-white/30">
+            {readyCount}/{playerList.length || 1} prontos
+          </span>
+        </div>
       </motion.div>
 
       {/* Player Slots Grid */}
