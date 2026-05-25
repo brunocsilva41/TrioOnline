@@ -137,10 +137,10 @@ export default function LobbyScreen() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.05, filter: "blur(20px)" }}
-      className="relative w-full min-h-[100dvh] h-full flex flex-col items-center justify-start sm:justify-center overflow-y-auto overflow-x-hidden pt-12 pb-24 sm:py-0"
+      className="relative w-full min-h-[100dvh] flex flex-col items-center justify-start sm:justify-center overflow-y-auto overflow-x-hidden pt-8 pb-32 sm:py-12"
     >
       {/* Animated Background */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,_rgba(52,211,153,0.08)_0%,_transparent_60%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,_rgba(251,191,36,0.04)_0%,_transparent_40%)]" />
         <FloatingCardsLounge />
@@ -152,22 +152,22 @@ export default function LobbyScreen() {
         initial={{ y: -30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-        className="z-10 text-center mb-12 relative"
+        className="z-10 text-center mb-8 sm:mb-12 relative px-4"
       >
         <motion.div
           animate={{ opacity: [0.3, 0.6, 0.3] }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           className="absolute -inset-10 bg-emerald-500/10 blur-[60px] rounded-full -z-10"
         />
-        <h2 className="text-amber-500/80 font-black tracking-[0.6em] text-[10px] sm:text-xs mb-3 italic">
+        <h2 className="text-amber-500/80 font-black tracking-[0.4em] sm:tracking-[0.6em] text-[8px] sm:text-xs mb-2 sm:mb-3 italic">
           TRINITY_DECK_ENGINE_V3
         </h2>
-        <h1 className="text-5xl sm:text-7xl font-black tracking-tighter flex items-center justify-center gap-1">
+        <h1 className="text-4xl sm:text-7xl font-black tracking-tighter flex items-center justify-center gap-1">
           <motion.span 
             initial={{ rotateY: 90 }}
             animate={{ rotateY: 0 }}
             transition={{ delay: 0.5, duration: 0.8 }}
-            className="text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+            className="text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]"
           >
             TRIO
           </motion.span>
@@ -180,15 +180,15 @@ export default function LobbyScreen() {
               ]
             }}
             transition={{ duration: 3, repeat: Infinity }}
-            className="text-emerald-400 drop-shadow-[0_0_40px_rgba(52,211,153,0.4)]"
+            className="text-emerald-400 drop-shadow-[0_0_30px_rgba(52,211,153,0.4)]"
           >
             ONLINE
           </motion.span>
         </h1>
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <div className="h-px w-8 bg-gradient-to-r from-transparent to-white/10" />
-          <span className="text-[8px] font-mono text-white/20 tracking-[0.4em] uppercase">Multiplayer Experience</span>
-          <div className="h-px w-8 bg-gradient-to-l from-transparent to-white/10" />
+        <div className="flex items-center justify-center gap-2 mt-3 sm:mt-4">
+          <div className="h-px w-6 sm:w-8 bg-gradient-to-r from-transparent to-white/10" />
+          <span className="text-[7px] sm:text-[8px] font-mono text-white/20 tracking-[0.3em] sm:tracking-[0.4em] uppercase">Multiplayer Experience</span>
+          <div className="h-px w-6 sm:w-8 bg-gradient-to-l from-transparent to-white/10" />
         </div>
       </motion.div>
 
@@ -204,10 +204,10 @@ export default function LobbyScreen() {
           stiffness: 100,
           damping: 20
         }}
-        className="z-10 w-full max-w-md px-6"
+        className="z-10 w-full max-w-md px-4 sm:px-6"
       >
-        <div className="bg-slate-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-1 shadow-2xl overflow-hidden">
-          <div className="p-6">
+        <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-1 shadow-2xl overflow-hidden">
+          <div className="p-5 sm:p-6">
             <AnimatePresence mode="wait">
               {view === "main" && (
                 <motion.div
@@ -294,7 +294,7 @@ export default function LobbyScreen() {
           <motion.p
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-rose-400 text-[10px] text-center mt-4 font-bold tracking-widest uppercase"
+            className="text-rose-400 text-[10px] text-center mt-4 font-bold tracking-widest uppercase px-4"
           >
             ⚠️ {error}
           </motion.p>

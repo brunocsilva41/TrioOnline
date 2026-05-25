@@ -173,6 +173,14 @@ const GameTable: React.FC = memo(() => {
 
   const gridCols = useMemo(() => {
     const n = visibleCards.length;
+    // On mobile, we prefer a more compact grid
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+    if (isMobile) {
+      if (n <= 4) return 2;
+      if (n <= 9) return 3;
+      if (n <= 12) return 3;
+      return 4;
+    }
     if (n <= 8) return 4;
     if (n <= 18) return 6;
     return 6;
@@ -184,10 +192,10 @@ const GameTable: React.FC = memo(() => {
     const rows = Math.ceil(n / cols) || 1;
     
     // We assume the max card size from clamp and a reasonable gap
-    const cardW = 72; 
-    const cardH = 108;
-    const gap = 12;
-    const padding = 16; // 12px requested + 4px safety
+    const cardW = typeof window !== 'undefined' && window.innerWidth < 640 ? 56 : 72; 
+    const cardH = typeof window !== 'undefined' && window.innerWidth < 640 ? 84 : 108;
+    const gap = typeof window !== 'undefined' && window.innerWidth < 640 ? 8 : 12;
+    const padding = 12;
 
     const width = (cols * cardW) + ((cols - 1) * gap) + (padding * 2);
     const height = (rows * cardH) + ((rows - 1) * gap) + (padding * 2);
@@ -216,7 +224,7 @@ const GameTable: React.FC = memo(() => {
   }, [logs, mySid, players]);
 
   return (
-    <div className="w-full h-screen flex flex-col overflow-hidden select-none relative bg-[#020617]">
+    <div className="w-full min-h-[100dvh] h-[100dvh] flex flex-col overflow-hidden select-none relative bg-[#020617]">
       
       {/* ══ NEW RICH BACKGROUND ══ */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
@@ -310,47 +318,47 @@ const GameTable: React.FC = memo(() => {
           <AnimatePresence mode="wait">
             {lastEvent && (
               <motion.div key={lastEvent} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
-                className="px-2.5 py-0.5 rounded-lg bg-black/50 border border-white/10 max-w-[250px]">
+                className="px-2.5 py-0.5 rounded-lg bg-black/50 border border-white/10 max-w-[120px] sm:max-w-[250px]">
                 <span className="text-[9px] font-bold text-amber-200/90 block truncate">{lastEvent}</span>
               </motion.div>
             )}
           </AnimatePresence>
           {isObserver ? (
              <button onClick={() => colyseusService.leaveRoom()}
-             className="px-2 py-1 ml-2 rounded bg-amber-900/30 border border-amber-500/20 text-[8px] font-bold text-amber-400/70 hover:bg-amber-900/50 hover:text-amber-300 transition-all">
-             Sair da Observação
+             className="px-2 py-1 ml-1 sm:ml-2 rounded bg-amber-900/30 border border-amber-500/20 text-[8px] font-bold text-amber-400/70 hover:bg-amber-900/50 hover:text-amber-300 transition-all">
+             Sair
            </button>
           ) : isHost ? (
-            <div className="flex items-center gap-1.5 ml-2">
+            <div className="flex items-center gap-1.5 ml-1 sm:ml-2">
               <button onClick={() => colyseusService.leaveRoom()}
-                className="px-2 py-1 rounded border border-white/20 text-[8px] font-bold text-white/70 hover:bg-white/10 hover:text-white transition-all">
+                className="px-2 py-1 rounded border border-white/20 text-[8px] font-bold text-white/70 hover:bg-white/10 hover:text-white transition-all hidden sm:block">
                 Sair
               </button>
               <button onClick={() => colyseusService.sendCloseRoom()}
                 className="px-2 py-1 rounded bg-red-900/30 border border-red-500/20 text-[8px] font-bold text-red-400/70 hover:bg-red-900/50 hover:text-red-300 transition-all">
-                Encerrar Partida
+                Encerrar
               </button>
             </div>
           ) : (
             <button onClick={() => colyseusService.leaveRoom()}
-              className="px-2 py-1 ml-2 rounded bg-red-900/30 border border-red-500/20 text-[8px] font-bold text-red-400/70 hover:bg-red-900/50 hover:text-red-300 transition-all">
-              Sair da Partida
+              className="px-2 py-1 ml-1 sm:ml-2 rounded bg-red-900/30 border border-red-500/20 text-[8px] font-bold text-red-400/70 hover:bg-red-900/50 hover:text-red-300 transition-all">
+              Sair
             </button>
           )}
         </div>
       </div>
 
-      {/* ═══ OPPONENTS — each with their own ask buttons ═══ */}
-      <div className="flex-none flex flex-wrap items-start justify-center gap-2 sm:gap-4 md:gap-6 px-2 sm:px-4 py-2 z-30 max-h-[25vh] overflow-y-auto custom-scroll">
+      {/* ═══ OPPONENTS ═══ */}
+      <div className="flex-none flex flex-wrap items-start justify-center gap-1 sm:gap-4 md:gap-6 px-1 sm:px-4 py-2 z-30 max-h-[30vh] overflow-y-auto custom-scroll">
         {opponents.map((p) => (
-          <div key={p.sessionId} className="transform scale-90 sm:scale-100">
+          <div key={p.sessionId} className="transform scale-75 sm:scale-100 origin-top">
             <OpponentSeat player={p} isActive={p.sessionId === activeSid} isMyTurn={isMyTurn} />
           </div>
         ))}
       </div>
 
       {/* ═══ TABLE ═══ */}
-      <div className="flex-1 min-h-0 flex items-center justify-center z-10 p-2 sm:p-4 overflow-auto custom-scroll">
+      <div className="flex-1 min-h-0 flex items-center justify-center z-10 p-1 sm:p-4 overflow-auto custom-scroll">
         <div className="relative rounded-2xl transition-all duration-500"
           style={{
             ...tableDimensions,
@@ -367,11 +375,11 @@ const GameTable: React.FC = memo(() => {
           </div>
 
           {/* Cards */}
-          <div className="flex items-center justify-center w-full h-full p-4">
+          <div className="flex items-center justify-center w-full h-full p-2 sm:p-4">
             <div className="grid place-items-center justify-center content-center w-full"
               style={{ 
                 gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`, 
-                gap: "12px",
+                gap: typeof window !== 'undefined' && window.innerWidth < 640 ? "8px" : "12px",
                 maxWidth: "100%"
               }}>
               {visibleCards.map((card, i) => {
@@ -382,7 +390,7 @@ const GameTable: React.FC = memo(() => {
                     transition={{ delay: i * 0.015, type: "spring", stiffness: 200, damping: 18 }}
                     className="w-full flex justify-center items-center"
                   >
-                    <div className="transform scale-90 sm:scale-100">
+                    <div className="transform scale-[0.7] sm:scale-100">
                       <Card cardData={card} index={origIdx} location="table" />
                     </div>
                   </motion.div>
@@ -393,45 +401,44 @@ const GameTable: React.FC = memo(() => {
         </div>
       </div>
 
-      {/* ═══ STATUS BAR (no action buttons — actions are on opponents) ═══ */}
-      <div className="flex-none h-8 flex items-center justify-center z-40">
+      {/* ═══ STATUS BAR ═══ */}
+      <div className="flex-none h-6 sm:h-8 flex items-center justify-center z-40 px-4 text-center">
         {isMyTurn && phase === "playing" ? (
-          <span className="text-[10px] font-bold text-emerald-400/60">Sua vez — peça cartas dos oponentes ou clique na mesa</span>
+          <span className="text-[8px] sm:text-[10px] font-bold text-emerald-400/80">Sua vez — peça cartas ou clique na mesa</span>
         ) : phase === "playing" ? (
-          <span className="text-[10px] font-bold text-white/20 tracking-wider uppercase">Aguardando {activeName}...</span>
+          <span className="text-[8px] sm:text-[10px] font-bold text-white/20 tracking-wider uppercase">Aguardando {activeName}...</span>
         ) : null}
       </div>
 
       {/* ═══ MY HAND ═══ */}
-      <div className="flex-none z-40 border-t border-white/5 bg-gradient-to-t from-black/60 to-[#1a0e08]/80">
-        <div className="px-4 pt-1.5 pb-2.5">
-          <div className="flex items-center justify-center gap-3 mb-1.5">
+      <div className="flex-none z-40 border-t border-white/5 bg-gradient-to-t from-black/80 to-[#1a0e08]/90">
+        <div className="px-4 pt-1 sm:pt-1.5 pb-3 sm:pb-4">
+          <div className="flex items-center justify-center gap-3 mb-1 sm:mb-1.5">
             <div className="flex items-center gap-1.5">
-              <div className="h-px w-4 bg-white/10" />
-              <span className="text-[8px] font-bold tracking-[0.15em] text-white/20 uppercase">
+              <div className="h-px w-3 sm:w-4 bg-white/10" />
+              <span className="text-[7px] sm:text-[8px] font-bold tracking-[0.15em] text-white/20 uppercase">
                 {isObserver ? "Modo Espectador" : "Sua Mão"}
               </span>
-              <div className="h-px w-4 bg-white/10" />
+              <div className="h-px w-3 sm:w-4 bg-white/10" />
             </div>
             {!isObserver && myPlayer?.trios?.length > 0 && (
               <div className="flex items-center gap-1.5 ml-1">
                 {myPlayer.trios.map((t, i) => (
                   <motion.div key={i} initial={{ scale: 0 }} animate={{ scale: 1 }}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/10 border border-amber-400/25">
-                    <div className="w-5 h-[30px] rounded-sm overflow-hidden">
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-400/10 border border-amber-400/25">
+                    <div className="w-4 h-[24px] sm:w-5 sm:h-[30px] rounded-sm overflow-hidden">
                       <CardImage value={t.value} className="rounded-sm" eager />
                     </div>
-                    <span className="text-[8px] font-black text-amber-400">×3</span>
+                    <span className="text-[7px] sm:text-[8px] font-black text-amber-400">×3</span>
                   </motion.div>
                 ))}
-                <span className="text-[8px] text-amber-400/50 font-bold">{myPlayer.trios.length}/3</span>
               </div>
             )}
           </div>
           {isObserver ? (
-            <div className="text-center py-4">
-              <span className="text-[10px] font-black text-amber-400/40 uppercase tracking-[0.2em] animate-pulse">
-                Você está observando a partida...
+            <div className="text-center py-2 sm:py-4">
+              <span className="text-[9px] sm:text-[10px] font-black text-amber-400/40 uppercase tracking-[0.2em] animate-pulse">
+                Observando...
               </span>
             </div>
           ) : myHand.length > 0 ? (
@@ -441,19 +448,20 @@ const GameTable: React.FC = memo(() => {
                 return (
                   <motion.div key={card.id}
                     animate={{ y: Math.abs(rot) * 0.3, rotate: rot }}
-                    whileHover={{ y: -14, scale: 1.1, zIndex: 50, rotate: 0 }}
+                    whileHover={{ y: -18, scale: 1.15, zIndex: 60, rotate: 0 }}
+                    whileTap={{ y: -24, scale: 1.2, zIndex: 60, rotate: 0 }}
                     transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                    style={{ marginLeft: i > 0 ? "-6px" : "0", zIndex: i }}
-                    className="flex-shrink-0">
-                    <div className="w-[52px] h-[78px] sm:w-[60px] sm:h-[90px] md:w-[68px] md:h-[102px] rounded-md overflow-hidden shadow-lg shadow-black/40 border border-white/10 hover:border-white/25 transition-colors relative">
-                      <CardImage value={card.value} alt={`${card.value}`} className="rounded-md" eager />
+                    style={{ marginLeft: i > 0 ? "-12px" : "0", zIndex: i }}
+                    className="flex-shrink-0 cursor-pointer">
+                    <div className="w-[44px] h-[66px] sm:w-[60px] sm:h-[90px] md:w-[68px] md:h-[102px] rounded-md sm:rounded-lg overflow-hidden shadow-xl shadow-black/60 border border-white/10 hover:border-white/30 transition-colors relative">
+                      <CardImage value={card.value} alt={`${card.value}`} className="rounded-md sm:rounded-lg" eager />
                     </div>
                   </motion.div>
                 );
               })}
             </div>
           ) : (
-            <div className="text-center py-3"><span className="text-[9px] text-white/15">Sem cartas</span></div>
+            <div className="text-center py-2 sm:py-3"><span className="text-[9px] text-white/15">Mão vazia</span></div>
           )}
         </div>
       </div>

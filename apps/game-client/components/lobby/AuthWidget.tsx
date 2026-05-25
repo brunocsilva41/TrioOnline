@@ -118,111 +118,118 @@ export default function AuthWidget() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-slate-900/80 border border-white/10 w-full max-w-sm rounded-3xl p-6 shadow-[0_30px_60px_rgba(0,0,0,0.5)] relative overflow-hidden"
+              className="bg-slate-900/90 border border-white/10 w-full max-w-sm rounded-3xl p-6 shadow-[0_30px_60px_rgba(0,0,0,0.5)] relative overflow-hidden my-auto"
             >
-              <button onClick={() => setIsOpen(false)} className="absolute top-4 right-4 text-white/30 hover:text-white">✕</button>
+              <button 
+                onClick={() => setIsOpen(false)} 
+                className="absolute top-4 right-4 text-white/30 hover:text-white z-10 w-8 h-8 flex items-center justify-center bg-white/5 rounded-full transition-colors"
+              >
+                ✕
+              </button>
               
-              {view === "profile" && authUser ? (
-                <div className="text-center">
-                  <div className="w-20 h-20 bg-emerald-500 rounded-full mx-auto flex items-center justify-center text-3xl font-black text-black shadow-[0_0_30px_rgba(16,185,129,0.3)] mb-4">
-                    {authUser.username.charAt(0).toUpperCase()}
-                  </div>
-                  <h2 className="text-2xl font-black text-white mb-1">{authUser.username}</h2>
-                  <p className="text-[10px] text-emerald-400 font-mono tracking-widest uppercase mb-6">Membro desde {new Date(authUser.created_at).getFullYear()}</p>
-                  
-                  <div className="grid grid-cols-2 gap-3 mb-6">
-                    <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                      <p className="text-2xl font-black text-white">{authUser.total_matches}</p>
-                      <p className="text-[9px] text-white/40 uppercase tracking-wider mt-1">Partidas</p>
+              <div className="max-h-[80vh] overflow-y-auto pr-1 custom-scroll">
+                {view === "profile" && authUser ? (
+                  <div className="text-center py-2">
+                    <div className="w-20 h-20 bg-emerald-500 rounded-full mx-auto flex items-center justify-center text-3xl font-black text-black shadow-[0_0_30px_rgba(16,185,129,0.3)] mb-4">
+                      {authUser.username.charAt(0).toUpperCase()}
                     </div>
-                    <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                      <p className="text-2xl font-black text-emerald-400">{authUser.total_wins}</p>
-                      <p className="text-[9px] text-white/40 uppercase tracking-wider mt-1">Vitórias</p>
-                    </div>
-                    <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                      <p className="text-2xl font-black text-amber-400">{authUser.total_trios}</p>
-                      <p className="text-[9px] text-white/40 uppercase tracking-wider mt-1">Trios Feitos</p>
-                    </div>
-                    <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                      <p className="text-2xl font-black text-sky-400">{(authUser.total_playtime_seconds / 3600).toFixed(1)}h</p>
-                      <p className="text-[9px] text-white/40 uppercase tracking-wider mt-1">Horas Jogadas</p>
-                    </div>
-                  </div>
-
-                  <button onClick={handleLogout} className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-xs font-bold text-red-400 uppercase tracking-widest transition-colors">
-                    Sair da Conta
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <h2 className="text-xl font-black text-white mb-2 text-center uppercase tracking-widest">
-                    {view === "login" ? "Acessar Conta" : "Criar Conta"}
-                  </h2>
-                  <p className="text-[10px] text-white/40 text-center mb-6">Jogue com amigos e salve seu progresso</p>
-                  
-                  <form onSubmit={view === "login" ? handleLogin : handleRegister} className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-white/30 uppercase tracking-widest ml-1">Email ou Nome de Usuário</label>
-                      <input
-                        type="text"
-                        placeholder="nome@email.com ou usuario"
-                        value={loginInput}
-                        onChange={e => setLoginInput(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-white text-sm focus:border-emerald-500/50 outline-none transition-all"
-                        required
-                      />
+                    <h2 className="text-2xl font-black text-white mb-1">{authUser.username}</h2>
+                    <p className="text-[10px] text-emerald-400 font-mono tracking-widest uppercase mb-6">Membro desde {new Date(authUser.created_at).getFullYear()}</p>
+                    
+                    <div className="grid grid-cols-2 gap-3 mb-6">
+                      <div className="bg-white/5 rounded-xl p-3 border border-white/5">
+                        <p className="text-2xl font-black text-white">{authUser.total_matches}</p>
+                        <p className="text-[9px] text-white/40 uppercase tracking-wider mt-1">Partidas</p>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-3 border border-white/5">
+                        <p className="text-2xl font-black text-emerald-400">{authUser.total_wins}</p>
+                        <p className="text-[9px] text-white/40 uppercase tracking-wider mt-1">Vitórias</p>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-3 border border-white/5">
+                        <p className="text-2xl font-black text-amber-400">{authUser.total_trios}</p>
+                        <p className="text-[9px] text-white/40 uppercase tracking-wider mt-1">Trios Feitos</p>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-3 border border-white/5">
+                        <p className="text-2xl font-black text-sky-400">{(authUser.total_playtime_seconds / 3600).toFixed(1)}h</p>
+                        <p className="text-[9px] text-white/40 uppercase tracking-wider mt-1">Horas Jogadas</p>
+                      </div>
                     </div>
 
-                    {view === "register" && isEmail && (
-                      <motion.div 
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        className="space-y-1"
-                      >
-                        <label className="text-[9px] font-black text-emerald-400/50 uppercase tracking-widest ml-1">Nome no Jogo</label>
+                    <button onClick={handleLogout} className="w-full py-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-xs font-bold text-red-400 uppercase tracking-widest transition-colors">
+                      Sair da Conta
+                    </button>
+                  </div>
+                ) : (
+                  <div className="py-2">
+                    <h2 className="text-xl font-black text-white mb-2 text-center uppercase tracking-widest">
+                      {view === "login" ? "Acessar Conta" : "Criar Conta"}
+                    </h2>
+                    <p className="text-[10px] text-white/40 text-center mb-6">Jogue com amigos e salve seu progresso</p>
+                    
+                    <form onSubmit={view === "login" ? handleLogin : handleRegister} className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-white/30 uppercase tracking-widest ml-1">Email ou Nome de Usuário</label>
                         <input
                           type="text"
-                          placeholder="Como quer ser chamado?"
-                          value={username}
-                          onChange={e => setUsername(e.target.value)}
-                          className="w-full bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-5 py-3 text-white text-sm focus:border-emerald-500/50 outline-none transition-all"
+                          placeholder="nome@email.com ou usuario"
+                          value={loginInput}
+                          onChange={e => setLoginInput(e.target.value)}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white text-sm focus:border-emerald-500/50 outline-none transition-all"
                           required
                         />
-                      </motion.div>
-                    )}
+                      </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-white/30 uppercase tracking-widest ml-1">Senha</label>
-                      <input
-                        type="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-white text-sm focus:border-emerald-500/50 outline-none transition-all"
-                        required
-                      />
+                      {view === "register" && isEmail && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          className="space-y-1"
+                        >
+                          <label className="text-[9px] font-black text-emerald-400/50 uppercase tracking-widest ml-1">Nome no Jogo</label>
+                          <input
+                            type="text"
+                            placeholder="Como quer ser chamado?"
+                            value={username}
+                            onChange={e => setUsername(e.target.value)}
+                            className="w-full bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-5 py-4 text-white text-sm focus:border-emerald-500/50 outline-none transition-all"
+                            required
+                          />
+                        </motion.div>
+                      )}
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-white/30 uppercase tracking-widest ml-1">Senha</label>
+                        <input
+                          type="password"
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={e => setPassword(e.target.value)}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white text-sm focus:border-emerald-500/50 outline-none transition-all"
+                          required
+                        />
+                      </div>
+                      
+                      {error && <p className="text-rose-400 text-[10px] font-bold text-center mt-2">⚠️ {error}</p>}
+                      
+                      <button type="submit" disabled={loading} className="w-full py-5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-widest rounded-xl disabled:opacity-50 transition-all shadow-[0_10px_20px_rgba(16,185,129,0.2)] active:scale-95 mt-2">
+                        {loading ? "Aguarde..." : view === "login" ? "Entrar" : "Criar Minha Conta"}
+                      </button>
+                    </form>
+                    
+                    <div className="mt-8 text-center">
+                      <button onClick={() => { setView(view === "login" ? "register" : "login"); setError(""); }} className="text-[10px] text-white/40 hover:text-white uppercase tracking-widest transition-colors p-2">
+                        {view === "login" ? "Não tem conta? Cadastre-se" : "Já tem conta? Faça Login"}
+                      </button>
                     </div>
-                    
-                    {error && <p className="text-rose-400 text-[10px] font-bold text-center mt-2">⚠️ {error}</p>}
-                    
-                    <button type="submit" disabled={loading} className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-widest rounded-xl disabled:opacity-50 transition-all shadow-[0_10px_20px_rgba(16,185,129,0.2)] active:scale-95 mt-2">
-                      {loading ? "Aguarde..." : view === "login" ? "Entrar" : "Criar Minha Conta"}
-                    </button>
-                  </form>
-                  
-                  <div className="mt-6 text-center">
-                    <button onClick={() => { setView(view === "login" ? "register" : "login"); setError(""); }} className="text-[10px] text-white/40 hover:text-white uppercase tracking-widest transition-colors">
-                      {view === "login" ? "Não tem conta? Cadastre-se" : "Já tem conta? Faça Login"}
-                    </button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </motion.div>
           </motion.div>
         )}

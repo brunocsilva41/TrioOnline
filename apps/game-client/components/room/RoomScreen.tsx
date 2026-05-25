@@ -50,7 +50,7 @@ export default function RoomScreen() {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 1.05, filter: "blur(15px)" }}
       transition={{ duration: 0.4 }}
-      className="relative w-full min-h-[100dvh] h-full flex flex-col items-center justify-start sm:justify-center overflow-y-auto overflow-x-hidden px-4 py-12 sm:py-0"
+      className="relative w-full min-h-screen flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden px-4 py-8 sm:py-12"
     >
       {/* Background */}
       <div className="absolute inset-0 z-0 bg-[#020617]">
@@ -182,7 +182,7 @@ export default function RoomScreen() {
         initial={{ y: 30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.3, type: "spring" }}
-        className="z-10 mt-8 sm:mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 w-full max-w-4xl px-4 sm:px-6"
+        className="z-20 mt-8 sm:mt-12 mb-8 flex flex-col sm:flex-row items-center justify-between gap-4 w-full max-w-4xl px-4 sm:px-6"
       >
         <motion.button
           onClick={handleLeave}
