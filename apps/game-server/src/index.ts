@@ -37,6 +37,17 @@ function loadLocalEnv() {
 
 loadLocalEnv();
 
+// Fatal error handlers
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("[Fatal] Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+    console.error("[Fatal] Uncaught Exception:", error);
+    // Give some time for logs to be sent
+    setTimeout(() => process.exit(1), 1000);
+});
+
 const port = Number(process.env.PORT || 2567);
 const app = express();
 const prisma = new PrismaClient();
@@ -67,11 +78,31 @@ const hashPassword = (password: string) => {
     return crypto.createHash("sha256").update(password).digest("hex");
 };
 
-// CORS must be the very first middleware — allows all origins
-app.use(cors());
+// CORS Configuration - Be extremely permissive for Render deployment
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow all origins
+        callback(null, true);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
+}));
+
 app.options("*", cors()); // Handle all OPTIONS preflight requests
 
 app.use(express.json());
+
+// Request logging
+app.use((req, res, next) => {
+    console.log(`[Trinity] ${req.method} ${req.url} - ${req.ip}`);
+    next();
+});
+
+// Add a root endpoint for basic health check
+app.get("/", (req, res) => {
+    res.json({ message: "Trinity Game Server is running", timestamp: new Date().toISOString() });
+});
 
 // === AUTH & PROFILE ROUTES ===
 
@@ -200,15 +231,31 @@ app.post("/api/profile/update", async (req, res) => {
     }
 });
 
-// Health check
+// Health check with timeout to prevent hanging on Render
 app.get("/health", async (_req, res) => {
     let dbStatus = "ok";
-    try {
-        await prisma.$queryRaw`SELECT 1`;
-    } catch (e) {
-        dbStatus = "error";
+    if (!databaseConfigured) {
+        dbStatus = "unconfigured";
+    } else {
+        try {
+            // Add a timeout to the DB check
+            const dbCheck = prisma.$queryRaw`SELECT 1`;
+            const timeout = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error("Database timeout")), 3000)
+            );
+            await Promise.race([dbCheck, timeout]);
+        } catch (e) {
+            dbStatus = "error";
+            console.warn(`[Health Check] Database issue: ${e instanceof Error ? e.message : String(e)}`);
+        }
     }
-    res.json({ status: "ok", uptime: process.uptime(), database: dbStatus });
+    res.json({ 
+        status: "ok", 
+        uptime: process.uptime(), 
+        database: dbStatus,
+        version: "1.0.1",
+        timestamp: new Date().toISOString()
+    });
 });
 
 // Room listing
