@@ -137,7 +137,7 @@ export default function LobbyScreen() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.05, filter: "blur(20px)" }}
-      className="relative w-full min-h-[100dvh] flex flex-col items-center justify-start sm:justify-center overflow-y-auto overflow-x-hidden pt-8 pb-32 sm:py-12"
+      className="relative w-full min-h-[100dvh] flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-8 pb-32 sm:py-12"
     >
       {/* Animated Background */}
       <div className="absolute inset-0 z-0 pointer-events-none">
@@ -152,7 +152,7 @@ export default function LobbyScreen() {
         initial={{ y: -30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-        className="z-10 text-center mb-8 sm:mb-12 relative px-4"
+        className="z-10 text-center mb-6 sm:mb-12 relative px-4"
       >
         <motion.div
           animate={{ opacity: [0.3, 0.6, 0.3] }}
@@ -192,7 +192,10 @@ export default function LobbyScreen() {
         </div>
       </motion.div>
 
-      <LeaderboardWidget />
+      {/* Leaderboard - Relative on mobile, Fixed on Desktop (handled via classes in widget) */}
+      <div className="w-full max-w-md z-20">
+        <LeaderboardWidget />
+      </div>
 
       {/* Content Card */}
       <motion.div

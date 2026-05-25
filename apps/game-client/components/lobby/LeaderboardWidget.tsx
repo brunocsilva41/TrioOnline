@@ -17,7 +17,12 @@ export default function LeaderboardWidget() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true); // Default collapsed on mobile
+
+  useEffect(() => {
+    // Check if desktop to auto-expand
+    if (window.innerWidth > 640) setIsCollapsed(false);
+  }, []);
 
   useEffect(() => {
     let failureCount = 0;
@@ -57,10 +62,10 @@ export default function LeaderboardWidget() {
   }, []);
 
   return (
-    <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-40 w-[calc(100%-32px)] sm:w-full sm:max-w-[440px] pointer-events-none">
+    <div className="relative sm:fixed sm:top-6 sm:right-6 z-40 w-full sm:w-full sm:max-w-[440px] pointer-events-none mb-8 sm:mb-0 px-4 sm:px-0">
       <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
         className="bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-3 sm:p-5 shadow-2xl pointer-events-auto"
       >
         <div className="flex items-center justify-between mb-2 sm:mb-4">

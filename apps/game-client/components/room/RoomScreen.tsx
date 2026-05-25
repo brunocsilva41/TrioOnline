@@ -177,60 +177,62 @@ export default function RoomScreen() {
         </div>
       </div>
 
-      {/* Action Bar */}
-      <motion.div
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.3, type: "spring" }}
-        className="z-20 mt-8 sm:mt-12 mb-8 flex flex-col sm:flex-row items-center justify-between gap-4 w-full max-w-4xl px-4 sm:px-6"
-      >
-        <motion.button
-          onClick={handleLeave}
-          whileTap={{ scale: 0.95 }}
-          className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-white/5 hover:bg-rose-500/15 border border-white/10 hover:border-rose-500/40
-            rounded-2xl text-[10px] sm:text-xs font-black tracking-widest text-white/60 hover:text-rose-400 transition-all uppercase"
+      {/* Action Bar - Fixed on mobile to ensure accessibility */}
+      <div className="sm:relative fixed bottom-0 left-0 right-0 sm:bottom-auto sm:left-auto sm:right-auto z-[60] bg-[#020617]/80 backdrop-blur-lg sm:bg-transparent border-t border-white/10 sm:border-t-0 p-4 sm:p-0">
+        <motion.div
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.3, type: "spring" }}
+          className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full max-w-4xl mx-auto sm:px-6 mb-2 sm:mb-8"
         >
-          SAIR
-        </motion.button>
+          <motion.button
+            onClick={handleLeave}
+            whileTap={{ scale: 0.95 }}
+            className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-white/5 hover:bg-rose-500/15 border border-white/10 hover:border-rose-500/40
+              rounded-2xl text-[10px] sm:text-xs font-black tracking-widest text-white/60 hover:text-rose-400 transition-all uppercase"
+          >
+            SAIR
+          </motion.button>
 
-        {isHost ? (
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          {isHost ? (
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              <motion.button
+                onClick={() => colyseusService.sendCloseRoom()}
+                whileTap={{ scale: 0.95 }}
+                className="w-full sm:w-auto px-5 sm:px-6 py-3.5 sm:py-4 rounded-2xl bg-red-900/30 border border-red-500/30 text-[10px] sm:text-xs font-black tracking-widest uppercase text-red-400/80 hover:bg-red-900/50 hover:text-red-300 hover:border-red-400/50 transition-all shadow-lg"
+              >
+                FECHAR SALA
+              </motion.button>
+              <motion.button
+                onClick={handleStartGame}
+                disabled={!allReady}
+                whileHover={allReady ? { scale: 1.02, y: -2 } : {}}
+                whileTap={allReady ? { scale: 0.98 } : {}}
+                className={`w-full sm:w-auto px-8 sm:px-12 py-4 rounded-2xl font-black text-xs sm:text-sm tracking-[0.2em] uppercase transition-all ${
+                  allReady
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black shadow-[0_10px_30px_rgba(16,185,129,0.3)] hover:shadow-[0_15px_40px_rgba(16,185,129,0.5)]'
+                    : 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
+                }`}
+              >
+                {allReady ? "INICIAR" : "AGUARDANDO"}
+              </motion.button>
+            </div>
+          ) : (
             <motion.button
-              onClick={() => colyseusService.sendCloseRoom()}
-              whileTap={{ scale: 0.95 }}
-              className="w-full sm:w-auto px-5 sm:px-6 py-3.5 sm:py-4 rounded-2xl bg-red-900/30 border border-red-500/30 text-[10px] sm:text-xs font-black tracking-widest uppercase text-red-400/80 hover:bg-red-900/50 hover:text-red-300 hover:border-red-400/50 transition-all shadow-lg"
-            >
-              FECHAR SALA
-            </motion.button>
-            <motion.button
-              onClick={handleStartGame}
-              disabled={!allReady}
-              whileHover={allReady ? { scale: 1.02, y: -2 } : {}}
-              whileTap={allReady ? { scale: 0.98 } : {}}
-              className={`w-full sm:w-auto px-8 sm:px-12 py-4 rounded-2xl font-black text-xs sm:text-sm tracking-[0.2em] uppercase transition-all ${
-                allReady
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black shadow-[0_10px_30px_rgba(16,185,129,0.3)] hover:shadow-[0_15px_40px_rgba(16,185,129,0.5)]'
-                  : 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
+              onClick={handleToggleReady}
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              className={`w-full sm:w-auto px-10 sm:px-16 py-4 rounded-2xl font-black text-xs sm:text-sm tracking-[0.2em] uppercase transition-all ${
+                players[mySessionId]?.isReady
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-[0_10px_30px_rgba(251,191,36,0.3)]'
+                  : 'bg-white/5 hover:bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
               }`}
             >
-              {allReady ? "INICIAR PARTIDA" : "AGUARDANDO JOGADORES"}
+              {players[mySessionId]?.isReady ? "CANCELAR PRONTO" : "ESTOU PRONTO"}
             </motion.button>
-          </div>
-        ) : (
-          <motion.button
-            onClick={handleToggleReady}
-            whileHover={{ scale: 1.02, y: -2 }}
-            whileTap={{ scale: 0.98 }}
-            className={`w-full sm:w-auto px-10 sm:px-16 py-4 rounded-2xl font-black text-xs sm:text-sm tracking-[0.2em] uppercase transition-all ${
-              players[mySessionId]?.isReady
-                ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-[0_10px_30px_rgba(251,191,36,0.3)]'
-                : 'bg-white/5 hover:bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
-            }`}
-          >
-            {players[mySessionId]?.isReady ? "CANCELAR PRONTO" : "ESTOU PRONTO"}
-          </motion.button>
-        )}
-      </motion.div>
+          )}
+        </motion.div>
+      </div>
 
       {/* Waiting indicator */}
       {!isHost && players[mySessionId]?.isReady && (
