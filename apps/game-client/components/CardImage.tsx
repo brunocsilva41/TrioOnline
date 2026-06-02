@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   CARD_BACK_IMAGE_SRC,
@@ -22,7 +23,7 @@ interface CardImageProps {
 /**
  * PROJECT TRINITY - Optimized Card Image Component
  * Handles preloading state, fallbacks, and smooth transitions.
- * Uses decoding="async" and fetchpriority="high" for performance.
+ * Now using next/image for LCP/FCP optimization.
  */
 const CardImage = memo(function CardImage({
   value,
@@ -36,38 +37,24 @@ const CardImage = memo(function CardImage({
   const { isReady } = usePreloader();
   const imageSrc = useMemo(() => src ?? getCardImageSrc(value), [src, value]);
   
-  // Initialize 'loaded' state based on the global cache
   const [loaded, setLoaded] = useState(() => isCardAssetLoaded(imageSrc));
   const [error, setError] = useState(false);
-  const imageRef = useRef<HTMLImageElement | null>(null);
   
   const isBack = imageSrc === CARD_BACK_IMAGE_SRC;
   const fallbackLabel = label ?? (isBack ? "TRIO" : String(value ?? ""));
 
-  // Sync with global cache when imageSrc changes or preloader finishes
   useEffect(() => {
     if (isCardAssetLoaded(imageSrc)) {
       setLoaded(true);
     }
   }, [imageSrc, isReady]);
 
-  // Check if image is already complete in DOM
-  useEffect(() => {
-    const image = imageRef.current;
-    if (image?.complete && image.naturalWidth > 0) {
-      markCardAssetLoaded(imageSrc);
-      setLoaded(true);
-    }
-  }, [imageSrc]);
-
   return (
     <div
       className={`relative h-full w-full overflow-hidden bg-[linear-gradient(145deg,#f7ecd2_0%,#d9b46a_48%,#7b3f16_100%)] ${className}`}
     >
-      {/* Card Border & Texture Overlay */}
-      <div className="absolute inset-[7%] rounded-[inherit] border border-black/15 bg-black/5 pointer-events-none" />
+      <div className="absolute inset-[7%] rounded-[inherit] border border-black/15 bg-black/5 pointer-events-none z-10" />
       
-      {/* Fallback Text (Visible while loading or on error) */}
       <div className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 ${loaded ? "opacity-0" : "opacity-100"}`}>
         <span className={`font-black tracking-[0.2em] text-black/40 ${isBack ? "text-[12px]" : "text-[18px]"}`}>
           {fallbackLabel}
@@ -75,14 +62,13 @@ const CardImage = memo(function CardImage({
         {error && <span className="text-[6px] text-red-500/50 uppercase mt-1">Load Error</span>}
       </div>
 
-      <img
-        ref={imageRef}
+      <Image
         src={imageSrc}
         alt={alt}
-        decoding="async"
-        loading={eager ? "eager" : "lazy"}
-        // @ts-ignore - fetchPriority is supported in modern browsers
-        fetchPriority={eager ? "high" : "auto"}
+        fill
+        sizes="(max-width: 640px) 72px, (max-width: 1024px) 100px, 120px"
+        priority={eager}
+        quality={85}
         draggable={false}
         onLoad={() => {
           markCardAssetLoaded(imageSrc);
@@ -93,7 +79,7 @@ const CardImage = memo(function CardImage({
           setError(true);
           setLoaded(false);
         }}
-        className={`absolute inset-0 h-full w-full select-none object-cover transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"} ${imageClassName}`}
+        className={`select-none object-cover transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"} ${imageClassName}`}
       />
     </div>
   );

@@ -173,16 +173,14 @@ const GameTable: React.FC = memo(() => {
 
   const gridCols = useMemo(() => {
     const n = visibleCards.length;
-    // On mobile, we prefer a more compact grid
+    // On mobile, we prefer a more compact grid to keep cards large enough for touch
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
     if (isMobile) {
       if (n <= 4) return 2;
       if (n <= 9) return 3;
-      if (n <= 12) return 3;
-      return 4;
+      return 4; // 4 cols max on mobile for readability
     }
     if (n <= 8) return 4;
-    if (n <= 18) return 6;
     return 6;
   }, [visibleCards.length]);
 
@@ -191,18 +189,19 @@ const GameTable: React.FC = memo(() => {
     const cols = gridCols;
     const rows = Math.ceil(n / cols) || 1;
     
-    // We assume the max card size from clamp and a reasonable gap
-    const cardW = typeof window !== 'undefined' && window.innerWidth < 640 ? 56 : 72; 
-    const cardH = typeof window !== 'undefined' && window.innerWidth < 640 ? 84 : 108;
-    const gap = typeof window !== 'undefined' && window.innerWidth < 640 ? 8 : 12;
-    const padding = 12;
+    // Improved dimension calculation based on responsive sizes
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+    const cardW = isMobile ? 56 : 72; 
+    const cardH = isMobile ? 84 : 108;
+    const gap = isMobile ? 8 : 12;
+    const padding = isMobile ? 12 : 16;
 
     const width = (cols * cardW) + ((cols - 1) * gap) + (padding * 2);
     const height = (rows * cardH) + ((rows - 1) * gap) + (padding * 2);
 
     return {
-      width: `clamp(${width}px, 95vw, 1100px)`,
-      minHeight: `${height}px`
+      width: `clamp(${width}px, 98vw, 1100px)`,
+      minHeight: isMobile ? `${height}px` : `${Math.max(height, 400)}px`
     };
   }, [visibleCards.length, gridCols]);
 

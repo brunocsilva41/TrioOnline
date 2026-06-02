@@ -25,6 +25,23 @@ html, body {
 body {
   color: rgb(var(--foreground-rgb));
   background: var(--bg-primary);
+  /* Prevenir elastic scrolling no iOS e garantir área segura */
+  overscroll-behavior-y: contain;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Forçar GPU em animações pesadas */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Prevenir zoom automático em inputs no iOS */
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* Custom scrollbar for room browser */
