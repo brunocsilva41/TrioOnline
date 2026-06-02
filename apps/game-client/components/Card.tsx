@@ -25,11 +25,12 @@ const Card = memo(forwardRef<HTMLDivElement, CardProps>(({ cardData, index, loca
   const activePlayerSessionId = useGameStore((s) => s.activePlayerSessionId);
   const mySessionId = useGameStore((s) => s.mySessionId);
   const targetedCardId = useGameStore((s) => s.targetedCardId);
+  const turnLocked = useGameStore((s) => s.turnLocked);
 
   const isMyTurn = activePlayerSessionId === mySessionId;
   const isRevealed = cardData.isRevealed;
   const isTargeted = targetedCardId === cardData.id;
-  const canInteract = location === "table" && isMyTurn && !isRevealed;
+  const canInteract = location === "table" && isMyTurn && !isRevealed && !turnLocked;
   const showFront = isRevealed || location === "hand";
 
   const handleClick = () => {

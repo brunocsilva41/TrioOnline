@@ -5,6 +5,7 @@ import { Card } from "../schemas/Card";
 import { Trio } from "../schemas/Player";
 import { DeckManager } from "@trinity/core-engine";
 import { PrismaClient } from "@prisma/client";
+import { BotController } from "../bots/BotController";
 
 const prisma = new PrismaClient();
 
@@ -30,6 +31,7 @@ export class TrioRoom extends Room<GameState> {
     private reconnectTimeout = 30000;
     private tableCardTrueValues: number[] = [];
     private gameStartTime: number = 0;
+    private botController: BotController;
 
     // Turn state
     private turnRevealedCards: Array<{
@@ -40,13 +42,13 @@ export class TrioRoom extends Room<GameState> {
         tableIndex: number;     // for table cards: index; for hand: -1
     }> = [];
     private turnMatchValue: number | null = null;
-    private turnLocked = false; // prevent actions during mismatch animation
 
-    private static TURN_TICKS = 2400; // 2 min @ 20Hz
+    private static TURN_TICKS = 300; // 15s @ 20Hz
     private static TRIOS_TO_WIN = 3;
 
     onCreate(options: any) {
         this.setState(new GameState());
+        this.botController = new BotController(this);
         const maxPlayers = Math.min(8, Math.max(2, options.maxPlayers || 8));
         this.state.maxPlayers = maxPlayers;
         this.state.minPlayers = options.minPlayers || 2;
@@ -237,16 +239,46 @@ export class TrioRoom extends Room<GameState> {
         this.state.expirationTick = this.state.currentTick + TrioRoom.TURN_TICKS;
         this.turnRevealedCards = [];
         this.turnMatchValue = null;
-        this.turnLocked = false;
+        this.state.turnLocked = false;
         this.log(`TURN_START:${this.state.activePlayerSessionId}`);
+
+        // Trigger bot if starting player is a bot
+        this.triggerBotIfNeeded();
     }
 
     // ────────────────────────────────────────────
     // GAME ACTIONS
     // ────────────────────────────────────────────
 
+    /**
+     * Unified reveal handler for both humans (messages) and bots (direct call).
+     */
+    public handleReveal(sid: string, cardId: number) {
+        if (this.state.status !== "playing" || this.state.activePlayerSessionId !== sid || this.state.turnLocked) return;
+        
+        // Find card by ID (could be table or hand)
+        const tableIdx = this.state.tableCards.findIndex(c => c.id === cardId);
+        if (tableIdx !== -1) {
+            this.gameRevealTableCard(sid, { cardIndex: tableIdx });
+            return;
+        }
+
+        // Bots currently only handle table reveals in their logic, 
+        // but we could expand this to ASK_PLAYER_CARD if needed.
+    }
+
+    private triggerBotIfNeeded() {
+        const p = this.state.players.get(this.state.activePlayerSessionId);
+        if (p && p.isManagedByBot) {
+            this.botController.processTurn(this.state.activePlayerSessionId).catch(e => {
+                console.error("[TrioRoom] Bot execution failed:", e);
+                this.advanceTurn(); // Fallback to next turn if bot crashes
+            });
+        }
+    }
+
     private gameRevealTableCard(sid: string, payload: { cardIndex: number }) {
-        if (this.state.status !== "playing" || this.state.activePlayerSessionId !== sid || this.turnLocked) return;
+        if (this.state.status !== "playing" || this.state.activePlayerSessionId !== sid || this.state.turnLocked) return;
         const idx = payload.cardIndex;
         if (idx < 0 || idx >= this.state.tableCards.length) return;
         const card = this.state.tableCards.at(idx);
@@ -255,11 +287,15 @@ export class TrioRoom extends Room<GameState> {
         card.value = this.tableCardTrueValues[idx];
         card.isRevealed = true;
         this.log(`TABLE_REVEAL:${sid}:${idx}:${card.value}`);
+        
+        // Notify bot controller for memory updates
+        this.botController.onCardRevealed(card.id, card.value);
+        
         this.processReveal(sid, card.id, card.value, "table", "", idx);
     }
 
     private gameAskPlayerCard(sid: string, payload: { targetSessionId: string; position: "lowest" | "highest" }) {
-        if (this.state.status !== "playing" || this.state.activePlayerSessionId !== sid || this.turnLocked) return;
+        if (this.state.status !== "playing" || this.state.activePlayerSessionId !== sid || this.state.turnLocked) return;
         const target = this.state.players.get(payload.targetSessionId);
         if (!target || target.hand.length === 0) return;
 
@@ -280,11 +316,15 @@ export class TrioRoom extends Room<GameState> {
         const card = target.hand.at(cardIdx)!;
         card.isRevealed = true;
         this.log(`HAND_REVEAL:${sid}:${payload.targetSessionId}:${payload.position}:${card.value}`);
+        
+        // Notify bot controller for memory updates
+        this.botController.onCardRevealed(card.id, card.value);
+
         this.processReveal(sid, card.id, card.value, "hand", payload.targetSessionId, -1);
     }
 
     private gameRevealOwnCard(sid: string, payload: { position: "lowest" | "highest" }) {
-        if (this.state.status !== "playing" || this.state.activePlayerSessionId !== sid || this.turnLocked) return;
+        if (this.state.status !== "playing" || this.state.activePlayerSessionId !== sid || this.state.turnLocked) return;
         const player = this.state.players.get(sid);
         if (!player || player.hand.length === 0) return;
 
@@ -305,6 +345,10 @@ export class TrioRoom extends Room<GameState> {
         const card = player.hand.at(cardIdx)!;
         card.isRevealed = true;
         this.log(`OWN_REVEAL:${sid}:${payload.position}:${card.value}`);
+        
+        // Notify bot controller for memory updates
+        this.botController.onCardRevealed(card.id, card.value);
+
         this.processReveal(sid, card.id, card.value, "hand", sid, -1);
     }
 
@@ -380,16 +424,16 @@ export class TrioRoom extends Room<GameState> {
     }
 
     private handleTrioComplete(activeSid: string, matching: any[]) {
-        if (this.turnLocked) return;
+        if (this.state.turnLocked) return;
         const ap = this.state.players.get(activeSid);
         const pName = ap ? ap.displayName : "Alguém";
         this.broadcast("TRIO_CINEMATIC", { sid: activeSid, value: this.turnMatchValue, playerName: pName });
         
         this.log(`TRIO_COMPLETE:${activeSid}:${this.turnMatchValue}`);
-        this.turnLocked = true;
+        this.state.turnLocked = true;
         this.clock.setTimeout(() => {
             this.collectTrio(activeSid, matching);
-            this.turnLocked = false;
+            this.state.turnLocked = false;
             const ap2 = this.state.players.get(activeSid);
             if (ap2) {
                 const has7 = ap2.trios.toArray().some((t: Trio) => t.value === 7);
@@ -417,10 +461,10 @@ export class TrioRoom extends Room<GameState> {
         if (value !== this.turnMatchValue) {
             // MISMATCH
             this.log(`MISMATCH:${activeSid}:${value}:${this.turnMatchValue}`);
-            this.turnLocked = true;
+            this.state.turnLocked = true;
             this.clock.setTimeout(() => {
                 this.hideAllRevealed();
-                this.turnLocked = false;
+                this.state.turnLocked = false;
                 this.advanceTurn();
             }, 1800);
             return;
@@ -433,7 +477,7 @@ export class TrioRoom extends Room<GameState> {
         this.tryAutoTrio(activeSid);
 
         const matching = this.turnRevealedCards.filter(c => c.value === this.turnMatchValue);
-        if (matching.length >= 3 && !this.turnLocked) {
+        if (matching.length >= 3 && !this.state.turnLocked) {
             this.handleTrioComplete(activeSid, matching);
         }
     }
@@ -500,6 +544,9 @@ export class TrioRoom extends Room<GameState> {
         this.state.expirationTick = this.state.currentTick + TrioRoom.TURN_TICKS;
         this.state.round++;
         this.log(`TURN_START:${this.state.activePlayerSessionId}`);
+
+        // Trigger bot for the next player
+        this.triggerBotIfNeeded();
     }
 
     private endGame(winner: string, reason: string) {
@@ -531,7 +578,7 @@ export class TrioRoom extends Room<GameState> {
     private startTickLoop() {
         this.clock.setInterval(() => {
             this.state.currentTick++;
-            if (this.state.status === "playing" && !this.turnLocked &&
+            if (this.state.status === "playing" && !this.state.turnLocked &&
                 this.state.expirationTick > 0 && this.state.currentTick >= this.state.expirationTick) {
                 this.hideAllRevealed();
                 this.advanceTurn();

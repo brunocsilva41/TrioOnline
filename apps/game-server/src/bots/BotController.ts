@@ -108,7 +108,8 @@ export class BotController {
             
             // Chance to send "Thinking" emote for humanization
             if (Math.random() < 0.3) {
-                this.room.broadcast("EMOTE", { sessionId: this.getCurrentBotId(), type: "THINKING" });
+                const botId = this.getCurrentBotId();
+                this.room.broadcast("PLAYER_EMOTE", { sessionId: botId, emote: "🤔" });
             }
         }
 

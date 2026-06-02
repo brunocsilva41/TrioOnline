@@ -443,6 +443,39 @@ class ColyseusService {
     // Action log
     this.room.state.actionLogWindow.onAdd((msg: string) => {
       store().addActionLog(msg);
+
+      // Parse for Toast
+      const [type, ...args] = msg.split(":");
+      const players = store().players;
+      const getName = (sid: string) => players[sid]?.displayName || "Desconhecido";
+
+      switch (type) {
+        case "TABLE_REVEAL": {
+          const [sid, _idx, val] = args;
+          store().triggerToast(`${getName(sid)} revelou um ${val} da mesa`, "info");
+          break;
+        }
+        case "HAND_REVEAL": {
+          const [sid, targetSid, pos, val] = args;
+          const posText = pos === "lowest" ? "mais baixa" : "mais alta";
+          store().triggerToast(
+            `${getName(sid)} pediu a ${posText} de ${getName(targetSid)} e revelou um ${val}`,
+            "info"
+          );
+          break;
+        }
+        case "OWN_REVEAL": {
+          const [sid, pos, val] = args;
+          const posText = pos === "lowest" ? "mais baixa" : "mais alta";
+          store().triggerToast(`${getName(sid)} revelou sua própria ${posText}: ${val}`, "info");
+          break;
+        }
+        case "TRIO_COMPLETE": {
+          const [sid, val] = args;
+          store().triggerToast(`TRIO! ${getName(sid)} completou o trio de ${val}!`, "success", 5000);
+          break;
+        }
+      }
     });
 
     // Error messages from server

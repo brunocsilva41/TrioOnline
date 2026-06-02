@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import AssetPreloader from "../components/AssetPreloader";
 import PWARegistry from "../components/PWARegistry";
+import ToastManager from "../components/ToastManager";
 import { CARD_ASSET_PATHS } from "../lib/cardAssets";
 
 export const metadata: Metadata = {
@@ -26,6 +27,7 @@ export default function RootLayout({
       </head>
       <body className="bg-slate-950 text-white overflow-hidden">
         <PWARegistry />
+        <ToastManager />
         <AssetPreloader>
           {children}
         </AssetPreloader>

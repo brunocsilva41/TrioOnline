@@ -21,6 +21,13 @@ export interface TrioData {
   value: number;
 }
 
+export interface ToastData {
+  id: string;
+  message: string;
+  type: "info" | "success" | "warning" | "error";
+  duration?: number;
+}
+
 export interface PlayerData {
   sessionId: string;
   userId: string;
@@ -84,12 +91,14 @@ interface GameStoreState {
   round: number;
   tableCardCount: number;
   handSize: number;
+  turnLocked: boolean;
 
   // === COLLECTIONS ===
   tableCards: CardData[];
   players: Record<string, PlayerData>;
   myHand: CardData[];
   actionLogWindow: string[];
+  toasts: ToastData[];
 
   // === LOBBY ===
   availableRooms: RoomInfo[];
@@ -128,6 +137,8 @@ interface GameStoreState {
   setTargetedCard: (id: number | null) => void;
   setActionLog: (logs: string[]) => void;
   addActionLog: (log: string) => void;
+  triggerToast: (message: string, type?: ToastData["type"], duration?: number) => void;
+  removeToast: (id: string) => void;
 
   nudgeEvent: { from: string, to: string, ts: number } | null;
   emoteEvent: { sessionId: string, emote: string, ts: number } | null;
@@ -159,10 +170,12 @@ const initialState = {
   round: 0,
   tableCardCount: 0,
   handSize: 0,
+  turnLocked: false,
   tableCards: [] as CardData[],
   players: {} as Record<string, PlayerData>,
   myHand: [] as CardData[],
   actionLogWindow: [] as string[],
+  toasts: [] as ToastData[],
   availableRooms: [] as RoomInfo[],
   isThermalThrottled: false,
   isTensionActive: false,
@@ -221,6 +234,13 @@ export const useGameStore = create<GameStoreState>((set) => ({
   setActionLog: (actionLogWindow) => set({ actionLogWindow }),
   addActionLog: (log) => set((state) => ({
     actionLogWindow: [...state.actionLogWindow.slice(-9), log]
+  })),
+  triggerToast: (message, type = "info", duration = 3000) => set((state) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    return { toasts: [...state.toasts, { id, message, type, duration }] };
+  }),
+  removeToast: (id) => set((state) => ({
+    toasts: state.toasts.filter((t) => t.id !== id),
   })),
 
   triggerNudge: (from, to) => set({ nudgeEvent: { from, to, ts: Date.now() } }),

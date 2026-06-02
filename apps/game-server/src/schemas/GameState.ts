@@ -41,6 +41,9 @@ export class GameState extends Schema {
     // Countdown before game starts (3, 2, 1...)
     @type("uint8") countdown: number = 0;
 
+    // UI/Input Lock during animations
+    @type("boolean") turnLocked: boolean = false;
+
     // Spectators
     @type("uint16") spectatorCount: number = 0;
 
