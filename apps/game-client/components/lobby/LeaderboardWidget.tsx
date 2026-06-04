@@ -45,7 +45,7 @@ export default function LeaderboardWidget() {
       } finally {
         if (disposed) return;
         setLoading(false);
-        timeoutId = setTimeout(fetchLeaderboard, failureCount > 0 ? getRetryDelayMs(failureCount) : 15000);
+        timeoutId = setTimeout(fetchLeaderboard, failureCount > 0 ? getRetryDelayMs(failureCount) : 30000);
       }
     };
 

@@ -439,30 +439,38 @@ export class TrioRoom extends Room<GameState> {
         if (this.turnLocked || this.state.status === "finished") return;
         const ap = this.state.players.get(activeSid);
         const pName = ap ? ap.displayName : "Alguém";
-        this.broadcast("TRIO_CINEMATIC", { sid: activeSid, value: this.turnMatchValue, playerName: pName });
-        
         this.log(`TRIO_COMPLETE:${activeSid}:${this.turnMatchValue}`);
         this.turnLocked = true;
+        
+        // Wait a bit before showing the cinematic to let the last card reveal sink in
         this.clock.setTimeout(() => {
-            // Safety check: game might have ended during timeout
             if (this.state.status === "finished") {
                 this.turnLocked = false;
                 return;
             }
-
-            this.collectTrio(activeSid, matching);
-            this.turnLocked = false;
+            this.broadcast("TRIO_CINEMATIC", { sid: activeSid, value: this.turnMatchValue, playerName: pName });
             
-            const ap2 = this.state.players.get(activeSid);
-            if (ap2) {
-                const has7 = ap2.trios.toArray().some((t: Trio) => t.value === 7);
-                if (has7) { this.endGame(activeSid, "TRIO_OF_SEVENS"); return; }
-                if (ap2.trios.length >= TrioRoom.TRIOS_TO_WIN) { this.endGame(activeSid, "THREE_TRIOS"); return; }
-            }
-            this.turnRevealedCards = [];
-            this.turnMatchValue = null;
-            this.advanceTurn();
-        }, 3500); // Increased delay for cinematic animation
+            this.clock.setTimeout(() => {
+                // Safety check: game might have ended during timeout
+                if (this.state.status === "finished") {
+                    this.turnLocked = false;
+                    return;
+                }
+
+                this.collectTrio(activeSid, matching);
+                this.turnLocked = false;
+                
+                const ap2 = this.state.players.get(activeSid);
+                if (ap2) {
+                    const has7 = ap2.trios.toArray().some((t: Trio) => t.value === 7);
+                    if (has7) { this.endGame(activeSid, "TRIO_OF_SEVENS"); return; }
+                    if (ap2.trios.length >= TrioRoom.TRIOS_TO_WIN) { this.endGame(activeSid, "THREE_TRIOS"); return; }
+                }
+                this.turnRevealedCards = [];
+                this.turnMatchValue = null;
+                this.advanceTurn();
+            }, 3500); // Cinematic duration
+        }, 1200); // Discovery pause
     }
 
     private processReveal(activeSid: string, cardId: number, value: number, source: "table" | "hand", ownerSid: string, tableIdx: number) {

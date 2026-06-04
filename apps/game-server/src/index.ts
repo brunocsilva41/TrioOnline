@@ -67,6 +67,10 @@ app.use(express.json());
 
 // Request logging
 app.use((req, res, next) => {
+    // Skip logging for frequent background checks to keep console clean
+    if (req.url === "/health" || req.url === "/api/leaderboard") {
+        return next();
+    }
     console.log(`[Trinity] ${req.method} ${req.url} - ${req.ip}`);
     next();
 });

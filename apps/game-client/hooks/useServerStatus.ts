@@ -59,7 +59,7 @@ export function useServerStatus() {
       setLatencyMs(null);
       setLastCheckedAt(Date.now());
     } finally {
-      const delay = nextStatus === "online" ? 10000 : getRetryDelayMs(failureCountRef.current);
+      const delay = nextStatus === "online" ? 20000 : getRetryDelayMs(failureCountRef.current);
       timeoutRef.current = setTimeout(checkStatus, delay);
     }
   }, []);

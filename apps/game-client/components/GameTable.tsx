@@ -10,7 +10,7 @@ import Card from "./Card";
 import TrioCinematic from "./game/TrioCinematic";
 import EmoteRain from "./game/EmoteRain";
 import GameChat from "./game/GameChat";
-import { LogOut, ArrowDownToLine, ArrowUpToLine, Trophy, Clock, Swords } from "lucide-react";
+import { LogOut, ArrowDownToLine, ArrowUpToLine, Trophy, Clock, Swords, Hand, Target } from "lucide-react";
 import CardImage from "./CardImage";
 
 // ==========================================
@@ -171,7 +171,7 @@ const CardRequestCinematic = memo(() => {
 CardRequestCinematic.displayName = "CardRequestCinematic";
 
 // ==========================================
-// 4. OPPONENTS
+// 4. OPPONENTS (3D CARD STYLE)
 // ==========================================
 const OpponentSeat = memo(({ player, isActive, isMyTurn }: { player: PlayerData, isActive: boolean, isMyTurn: boolean }) => {
   const nudgeEvent = useGameStore((s) => s.nudgeEvent);
@@ -181,50 +181,54 @@ const OpponentSeat = memo(({ player, isActive, isMyTurn }: { player: PlayerData,
   return (
     <motion.div 
       animate={isNudged ? { x: [-3, 3, -3, 3, 0], transition: { duration: 0.3 } } : {}}
-      className={`flex flex-col p-3 rounded-2xl border transition-all duration-500 min-w-[260px] 
-        ${isActive ? 'bg-slate-900/80 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.1)] scale-105 z-10' : 'bg-slate-950/40 border-white/5 hover:bg-slate-950/60'}`}
+      whileHover={{ y: -5, rotateX: 2, rotateY: -2 }}
+      className={`
+        flex flex-col p-4 rounded-[2rem] border transition-all duration-500 min-w-[280px] relative overflow-hidden
+        ${isActive ? 'bg-slate-900/90 border-emerald-500/50 shadow-[0_20px_50px_rgba(16,185,129,0.2)] scale-105 z-10' : 'bg-slate-950/60 border-white/10 hover:bg-slate-900/80 shadow-xl'}
+      `}
     >
-       <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-3">
-             <div className="relative">
-                <div className={`p-1 rounded-full bg-gradient-to-br ${isActive ? 'from-emerald-400 to-teal-600 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'from-slate-700 to-slate-900'}`}>
-                   <PlayerAvatar sessionId={player.sessionId} isActive={isActive} showName={false} showBadge={false} size="lg" />
-                </div>
-                {isActive && (
-                  <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }} 
-                    className="absolute inset-0 rounded-full border-2 border-emerald-400 pointer-events-none" />
-                )}
-             </div>
+       {/* 3D Glass Highlight */}
+       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+       
+       <div className="flex items-center justify-between relative z-10">
+          <div className="flex items-center gap-4">
+             <PlayerAvatar sessionId={player.sessionId} isActive={isActive} showName={false} showBadge={false} size="lg" />
              <div className="flex flex-col min-w-0">
-                <span className={`text-[11px] font-black font-display uppercase tracking-wider truncate max-w-[100px] ${isActive ? 'text-emerald-400' : 'text-white'}`}>
+                <span className={`text-xs font-black font-display uppercase tracking-wider truncate max-w-[120px] ${isActive ? 'text-emerald-400' : 'text-white'}`}>
                    {player.displayName}
                 </span>
-                <span className="text-[8px] font-mono text-white/60 tracking-widest uppercase">Cartas: {player.handCount}</span>
+                <div className="flex items-center gap-1.5 mt-1">
+                   <Hand size={10} className="text-white/40" />
+                   <span className="text-[9px] font-black font-display text-white/60 tracking-[0.1em] uppercase">{player.handCount} Cartas</span>
+                </div>
              </div>
           </div>
 
           <div className="flex flex-col items-end">
-             <span className="text-[8px] font-black font-display text-white/40 uppercase tracking-[0.2em] mb-1.5">Trios</span>
-             <FormedTriosPanel trios={player.trios} scale={0.65} />
+             <div className="flex items-center gap-1.5 mb-2">
+                <Target size={10} className="text-white/30" />
+                <span className="text-[8px] font-black font-display text-white/40 uppercase tracking-[0.2em]">Trios</span>
+             </div>
+             <FormedTriosPanel trios={player.trios} scale={0.7} />
           </div>
        </div>
 
        {isMyTurn && player.handCount > 0 && (
-         <div className="flex gap-2 w-full mt-2 pt-2 border-t border-white/5">
+         <div className="flex gap-2 w-full mt-4 pt-3 border-t border-white/5 relative z-10">
             <button 
                disabled={isProcessing}
                onClick={() => colyseusService.sendAskPlayerCard(player.sessionId, "lowest")} 
-               className="flex-1 flex items-center justify-center gap-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 rounded-lg transition-all active:scale-95 group disabled:opacity-50"
+               className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 rounded-xl transition-all active:scale-95 group disabled:opacity-50"
             >
-               <ArrowDownToLine size={10} className="text-emerald-400 group-hover:scale-110 transition-transform" />
+               <ArrowDownToLine size={12} className="text-emerald-400 group-hover:scale-110 transition-transform" />
                <span className="text-[9px] font-black font-display text-emerald-400 uppercase tracking-widest">Menor</span>
             </button>
             <button 
                disabled={isProcessing}
                onClick={() => colyseusService.sendAskPlayerCard(player.sessionId, "highest")} 
-               className="flex-1 flex items-center justify-center gap-2 py-1.5 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 hover:border-violet-500/40 rounded-lg transition-all active:scale-95 group disabled:opacity-50"
+               className="flex-1 flex items-center justify-center gap-2 py-2 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 hover:border-violet-500/40 rounded-xl transition-all active:scale-95 group disabled:opacity-50"
             >
-               <ArrowUpToLine size={10} className="text-violet-400 group-hover:scale-110 transition-transform" />
+               <ArrowUpToLine size={12} className="text-violet-400 group-hover:scale-110 transition-transform" />
                <span className="text-[9px] font-black font-display text-violet-400 uppercase tracking-widest">Maior</span>
             </button>
          </div>
@@ -264,29 +268,31 @@ const TableSurface = memo(({ cards }: { cards: CardData[] }) => {
 TableSurface.displayName = "TableSurface";
 
 // ==========================================
-// 6. PLAYER AREA
+// 6. PLAYER AREA (3D DASHBOARD STYLE)
 // ==========================================
 const PlayerArea = memo(({ player, isMyTurn }: { player: PlayerData, isMyTurn: boolean }) => {
   const myHand = useGameStore((s) => s.myHand);
 
   return (
-    <div className="flex-none bg-slate-950/95 border-t border-white/10 z-40 relative px-4 sm:px-8 py-3 shadow-[0_-15px_40px_rgba(0,0,0,0.5)]">
-       {isMyTurn && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute top-0 left-0 w-full h-0.5 bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,1)]" />}
+    <div className="flex-none bg-slate-950/95 border-t border-white/10 z-40 relative px-4 sm:px-8 py-4 shadow-[0_-20px_50px_rgba(0,0,0,0.8)]">
+       {/* 3D Active Turn Glow */}
+       {isMyTurn && <motion.div initial={{ opacity: 0 }} animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 2, repeat: Infinity }} 
+           className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_30px_rgba(16,185,129,0.8)]" />}
 
-       <div className="w-full max-w-7xl mx-auto flex flex-col sm:flex-row items-center gap-4 sm:gap-8 min-h-[100px]">
-          <div className="hidden lg:flex flex-none items-center gap-4 w-60 border-r border-white/5">
-             <div className={`p-1 rounded-full bg-gradient-to-br ${isMyTurn ? 'from-emerald-400 to-teal-500' : 'from-slate-700 to-slate-800'}`}>
-                <PlayerAvatar sessionId={player?.sessionId} isActive={isMyTurn} size="lg" showName={false} showBadge={false} />
-             </div>
+       <div className="w-full max-w-7xl mx-auto flex flex-col sm:flex-row items-center gap-6 sm:gap-12 min-h-[120px]">
+          {/* 3D PROFILE CARD */}
+          <div className="hidden lg:flex flex-none items-center gap-5 w-72 bg-white/[0.03] p-4 rounded-[1.5rem] border border-white/10 shadow-lg">
+             <PlayerAvatar sessionId={player?.sessionId} isActive={isMyTurn} size="lg" showName={false} showBadge={false} />
              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-black font-display text-white uppercase truncate tracking-wide">{player?.displayName}</span>
-                <span className={`text-[10px] font-black font-display tracking-[0.2em] uppercase ${isMyTurn ? 'text-emerald-400' : 'text-white/60'}`}>
+                <span className="text-base font-black font-display text-white uppercase truncate tracking-tight">{player?.displayName}</span>
+                <div className={`flex items-center gap-2 mt-1 px-3 py-1 rounded-full text-[10px] font-black font-display tracking-widest border transition-colors
+                  ${isMyTurn ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-white/5 text-white/40 border-white/5'}`}>
                    {isMyTurn ? "SEU TURNO" : "AGUARDANDO"}
-                </span>
+                </div>
              </div>
           </div>
 
-          <div className="flex-1 w-full h-[130px] flex items-center justify-center relative overflow-visible">
+          <div className="flex-1 w-full h-[140px] flex items-center justify-center relative overflow-visible">
               <div className="flex items-end justify-center w-full max-w-5xl px-2">
                  {myHand.map((card, i) => {
                     const count = myHand.length;
@@ -299,10 +305,10 @@ const PlayerArea = memo(({ player, isMyTurn }: { player: PlayerData, isMyTurn: b
                     
                     return (
                       <motion.div key={card.id} 
-                        className="w-[75px] sm:w-[95px] aspect-[2/3] relative flex-shrink-0"
+                        className="w-[80px] sm:w-[100px] aspect-[2/3] relative flex-shrink-0"
                         style={{ marginLeft: overlapX, zIndex: i }}
                         animate={{ rotate: rotation, y: yOffset }}
-                        whileHover={{ y: -35, scale: 1.15, zIndex: 100, rotate: 0 }}
+                        whileHover={{ y: -45, scale: 1.2, zIndex: 100, rotate: 0 }}
                         transition={{ type: "spring", stiffness: 300, damping: 20 }}
                       >
                          <Card cardData={card} index={i} location="hand" />
@@ -310,18 +316,19 @@ const PlayerArea = memo(({ player, isMyTurn }: { player: PlayerData, isMyTurn: b
                     );
                  })}
                  {myHand.length === 0 && (
-                    <span className="text-xs font-mono text-white/30 uppercase tracking-[0.4em] italic">Aguardando Distribuição</span>
+                    <span className="text-sm font-black font-display text-white/20 uppercase tracking-[0.6em] italic animate-pulse">Aguardando Distribuição</span>
                  )}
               </div>
           </div>
 
-          <div className="flex-none flex flex-col items-center sm:items-end w-full sm:w-72 lg:pl-6">
-             <div className="flex items-center gap-2 mb-3 opacity-60">
-                <Trophy size={14} className="text-amber-400" />
-                <span className="text-[10px] font-black font-display text-white uppercase tracking-widest">Meus Trios</span>
+          {/* TRIOS DASHBOARD */}
+          <div className="flex-none flex flex-col items-center sm:items-end w-full sm:w-80 lg:pl-8 border-l border-white/5">
+             <div className="flex items-center gap-3 mb-4">
+                <Trophy size={18} className="text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.4)]" />
+                <span className="text-xs font-black font-display text-white uppercase tracking-[0.2em]">Meus Trios</span>
              </div>
              <div className="flex justify-center sm:justify-end w-full overflow-visible">
-                <FormedTriosPanel trios={player?.trios || []} scale={1.35} />
+                <FormedTriosPanel trios={player?.trios || []} scale={1.5} />
              </div>
           </div>
        </div>
@@ -369,7 +376,7 @@ const GameTable: React.FC = memo(() => {
       <GameHeader />
 
       <div className="flex-none w-full overflow-hidden bg-gradient-to-b from-black/80 to-transparent z-40">
-         <div className="flex items-start justify-center gap-4 px-4 pt-6 pb-2 overflow-x-auto custom-scroll-hidden">
+         <div className="flex items-start justify-center gap-6 px-4 pt-8 pb-4 overflow-x-auto custom-scroll-hidden">
             {opponents.map(p => (
                <OpponentSeat key={p.sessionId} player={p} isActive={p.sessionId === activeSid} isMyTurn={isMyTurn} />
             ))}
