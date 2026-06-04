@@ -5,8 +5,11 @@ import crypto from "crypto";
 import path from "path";
 import { Server, matchMaker } from "colyseus";
 import { WebSocketTransport } from "@colyseus/ws-transport";
+import { RedisPresence } from "@colyseus/redis-presence";
+import { RedisDriver } from "@colyseus/redis-driver";
 import { prisma, databaseConfigured } from "./db";
 import { TrioRoom } from "./rooms/TrioRoom";
+import { RedisService, redis } from "./RedisService";
 
 // Fatal error handlers
 process.on("unhandledRejection", (reason, promise) => {
@@ -137,6 +140,10 @@ app.get("/api/leaderboard", async (req, res) => {
     }
 
     try {
+        // Try Cache first (Step A: Optimization)
+        const cached = await RedisService.get("trinity_leaderboard");
+        if (cached) return res.json({ leaderboard: cached, source: "cache" });
+
         const topPlayers = await prisma.user.findMany({
             orderBy: { total_wins: 'desc' },
             take: 10,
@@ -149,7 +156,10 @@ app.get("/api/leaderboard", async (req, res) => {
                 total_trios: true
             }
         });
-        res.json({ leaderboard: topPlayers });
+
+        // Save to cache for 30 seconds
+        await RedisService.set("trinity_leaderboard", topPlayers, 30);
+        res.json({ leaderboard: topPlayers, source: "database" });
     } catch (e) {
         logDatabaseError("API Leaderboard", e);
         res.json({ leaderboard: [], database: "error" });

@@ -236,6 +236,7 @@ export const useGameStore = create<GameStoreState>((set) => ({
 
   // Lobby
   setAvailableRooms: (availableRooms) => set({ availableRooms }),
+  setShowTutorial: (showTutorial) => set({ showTutorial }),
 
   // UX
   setThermalThrottled: (isThermalThrottled) => set({ isThermalThrottled }),

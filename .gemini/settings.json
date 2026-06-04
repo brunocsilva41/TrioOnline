@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "browser": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": "C:\\Users\\Bruno Silva\\Documents\\Projetos\\mcp-browser\\gemini-browser-mcp",
+      "timeout": 60000,
+      "trust": true,
+      "env": {
+        "BROWSER_HEADLESS": "false",
+        "BROWSER_TIMEOUT_MS": "15000"
+      }
+    }
+  }
+}

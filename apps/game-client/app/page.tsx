@@ -13,6 +13,8 @@ import GameOverScreen from "../components/game/GameOverScreen";
 
 export default function Home() {
   const phase = useGameStore((s) => s.phase);
+  const showTutorial = useGameStore((s) => s.showTutorial);
+  const setShowTutorial = useGameStore((s) => s.setShowTutorial);
   const [reconnectPrompt, setReconnectPrompt] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
 
@@ -96,6 +98,23 @@ export default function Home() {
                 </button>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </main>
+  );
+}
+}}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200]"
+          >
+            <TutorialOverlay />
+            <button
+              onClick={() => setShowTutorial(false)}
+              className="fixed top-8 left-8 z-[210] px-6 py-2 bg-rose-500/20 hover:bg-rose-500/40 border border-rose-500/40 rounded-full text-[10px] font-black tracking-widest text-rose-300 uppercase transition-all"
+            >
+              Sair do Tutorial
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

@@ -24,6 +24,7 @@ export default function LobbyScreen() {
 
   const availableRooms = useGameStore((s) => s.availableRooms);
   const authUser = useGameStore((s) => s.authUser);
+  const setShowTutorial = useGameStore((s) => s.setShowTutorial);
   const isServerOnline = serverStatus.status === "online";
 
   // Load saved name on mount (client-only to avoid hydration mismatch)
@@ -773,6 +774,11 @@ function FloatingCardsLounge() {
             eager={false}
           />
         </motion.div>
+      ))}
+    </div>
+  );
+}
+on.div>
       ))}
     </div>
   );

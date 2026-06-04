@@ -436,7 +436,7 @@ export class TrioRoom extends Room<GameState> {
     }
 
     private handleTrioComplete(activeSid: string, matching: any[]) {
-        if (this.turnLocked) return;
+        if (this.turnLocked || this.state.status === "finished") return;
         const ap = this.state.players.get(activeSid);
         const pName = ap ? ap.displayName : "Alguém";
         this.broadcast("TRIO_CINEMATIC", { sid: activeSid, value: this.turnMatchValue, playerName: pName });
@@ -444,8 +444,15 @@ export class TrioRoom extends Room<GameState> {
         this.log(`TRIO_COMPLETE:${activeSid}:${this.turnMatchValue}`);
         this.turnLocked = true;
         this.clock.setTimeout(() => {
+            // Safety check: game might have ended during timeout
+            if (this.state.status === "finished") {
+                this.turnLocked = false;
+                return;
+            }
+
             this.collectTrio(activeSid, matching);
             this.turnLocked = false;
+            
             const ap2 = this.state.players.get(activeSid);
             if (ap2) {
                 const has7 = ap2.trios.toArray().some((t: Trio) => t.value === 7);
