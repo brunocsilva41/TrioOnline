@@ -5,16 +5,16 @@ import { AnimatePresence, motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useGameStore } from "../store/useGameStore";
 import { colyseusService } from "../networking/ColyseusService";
+import AssetPreloader from "../components/AssetPreloader";
 
-import { TutorialOverlay } from "../tutorial/TutorialOverlay";
-
-// Dynamic imports to prevent SSR issues and reduce bundle size
+// Dynamic imports to prevent SSR issues
 const LobbyScreen = dynamic(() => import("../components/lobby/LobbyScreen"), { ssr: false });
 const RoomScreen = dynamic(() => import("../components/room/RoomScreen"), { ssr: false });
 const CountdownScreen = dynamic(() => import("../components/room/CountdownScreen"), { ssr: false });
 const DealingCinematic = dynamic(() => import("../components/game/DealingCinematic"), { ssr: false });
 const GameTable = dynamic(() => import("../components/GameTable"), { ssr: false });
 const GameOverScreen = dynamic(() => import("../components/game/GameOverScreen"), { ssr: false });
+const TutorialScreen = dynamic(() => import("../components/lobby/TutorialScreen"), { ssr: false });
 
 /**
  * PROJECT TRINITY - Main Entry Point
@@ -55,71 +55,73 @@ export default function Home() {
   if (!mounted) return null;
 
   return (
-    <main className="min-h-screen bg-[#020617] text-white overflow-hidden font-sans selection:bg-emerald-500/30">
-      <AnimatePresence mode="wait">
-        {phase === "lobby" && <LobbyScreen key="lobby" />}
-        {phase === "room" && <RoomScreen key="room" />}
-        {phase === "countdown" && <CountdownScreen key="countdown" />}
-        {phase === "dealing" && <DealingCinematic key="dealing" />}
-        {phase === "playing" && <GameTable key="game" />}
-        {phase === "finished" && (
-          <>
-            <GameTable key="game-bg" />
-            <GameOverScreen key="game-over" />
-          </>
-        )}
-      </AnimatePresence>
+    <AssetPreloader>
+      <main className="min-h-screen bg-[#020617] text-white overflow-hidden font-sans selection:bg-emerald-500/30 relative">
+        <AnimatePresence mode="wait">
+          {phase === "lobby" && !showTutorial && <LobbyScreen key="lobby" />}
+          {phase === "room" && <RoomScreen key="room" />}
+          {phase === "countdown" && <CountdownScreen key="countdown" />}
+          {phase === "dealing" && <DealingCinematic key="dealing" />}
+          {phase === "playing" && <GameTable key="game" />}
+          {phase === "finished" && (
+            <>
+              <GameTable key="game-bg" />
+              <GameOverScreen key="game-over" />
+            </>
+          )}
+        </AnimatePresence>
 
-      {/* ── Reconnect Dialog ── */}
-      <AnimatePresence>
-        {reconnectPrompt && (
-          <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
-              <div className="text-3xl mb-3">🎮</div>
-              <h2 className="text-lg font-black font-display text-white mb-1">Partida em andamento</h2>
-              <p className="text-xs text-white/40 mb-5">
-                Você estava em uma partida. Deseja voltar ao jogo?
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleDecline}
-                  disabled={reconnecting}
-                  className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white/60 hover:bg-white/10 transition-all"
-                >
-                  Ir ao Lobby
-                </button>
-                <button
-                  onClick={handleReconnect}
-                  disabled={reconnecting}
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-bold hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
-                >
-                  {reconnecting ? "Reconectando..." : "Voltar ao Jogo"}
-                </button>
+        {/* ── Tutorial Layer ── */}
+        <AnimatePresence>
+          {showTutorial && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="fixed inset-0 z-[150] bg-[#020617]"
+            >
+              <TutorialScreen />
+              <button
+                onClick={() => setShowTutorial(false)}
+                className="fixed top-8 right-8 z-[160] px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full text-[10px] font-black tracking-widest uppercase transition-all"
+              >
+                Voltar ao Jogo
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Reconnect Dialog ── */}
+        <AnimatePresence>
+          {reconnectPrompt && (
+            <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
+                <div className="text-3xl mb-3">🎮</div>
+                <h2 className="text-lg font-black font-display text-white mb-1">Partida em andamento</h2>
+                <p className="text-xs text-white/40 mb-5">
+                  Você estava em uma partida. Deseja voltar ao jogo?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDecline}
+                    disabled={reconnecting}
+                    className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white/60 hover:bg-white/10 transition-all"
+                  >
+                    Ir ao Lobby
+                  </button>
+                  <button
+                    onClick={handleReconnect}
+                    disabled={reconnecting}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-bold hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                  >
+                    {reconnecting ? "Reconectando..." : "Voltar ao Jogo"}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Tutorial Overlay ── */}
-      <AnimatePresence>
-        {showTutorial && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200]"
-          >
-            <TutorialOverlay />
-            <button
-              onClick={() => setShowTutorial(false)}
-              className="fixed top-8 left-8 z-[210] px-6 py-2 bg-rose-500/20 hover:bg-rose-500/40 border border-rose-500/40 rounded-full text-[10px] font-black tracking-widest text-rose-300 uppercase transition-all"
-            >
-              Sair do Tutorial
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </main>
+          )}
+        </AnimatePresence>
+      </main>
+    </AssetPreloader>
   );
 }

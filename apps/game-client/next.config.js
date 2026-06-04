@@ -3,6 +3,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  transpilePackages: ["@trinity/core-engine"],
   async headers() {
     return [
       {
