@@ -10,7 +10,6 @@ import { useMemo } from "react";
 export default function GameOverScreen() {
   const players = useGameStore((s) => s.players);
   const mySid = useGameStore((s) => s.mySessionId);
-  const roomCode = useGameStore((s) => s.roomCode);
 
   const sortedResults = useMemo(() => {
     return Object.values(players).sort((a, b) => (b.score || 0) - (a.score || 0));
@@ -19,7 +18,7 @@ export default function GameOverScreen() {
   const winner = sortedResults[0];
   const isWinner = winner?.sessionId === mySid;
 
-  const handleBackToLobby = () => {
+  const handleFinish = () => {
     colyseusService.leaveRoom();
   };
 
@@ -88,7 +87,7 @@ export default function GameOverScreen() {
         {/* Actions */}
         <div className="p-8 pt-0 flex gap-3">
           <motion.button
-            onClick={handleBackToLobby}
+            onClick={handleFinish}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black font-display text-white/60 hover:text-white transition-all uppercase tracking-widest flex items-center justify-center gap-2"
@@ -98,7 +97,7 @@ export default function GameOverScreen() {
           </motion.button>
           
           <motion.button
-            onClick={() => window.location.reload()} // Quick dirty fix to restart or rejoin
+            onClick={handleFinish}
             whileHover={{ scale: 1.02, backgroundColor: "rgba(16,185,129,0.9)" }}
             whileTap={{ scale: 0.98 }}
             className="flex-[2] py-4 rounded-2xl bg-emerald-500 text-black text-[10px] font-black font-display transition-all uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"

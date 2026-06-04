@@ -188,7 +188,7 @@ const OpponentSeat = memo(({ player, isActive, isMyTurn }: { player: PlayerData,
           <div className="flex items-center gap-3">
              <div className="relative">
                 <div className={`p-1 rounded-full bg-gradient-to-br ${isActive ? 'from-emerald-400 to-teal-600 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'from-slate-700 to-slate-900'}`}>
-                   <PlayerAvatar sessionId={player.sessionId} isActive={isActive} showName={false} showBadge={false} size="lg" className="border-2 border-slate-950" />
+                   <PlayerAvatar sessionId={player.sessionId} isActive={isActive} showName={false} showBadge={false} size="lg" />
                 </div>
                 {isActive && (
                   <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }} 
@@ -276,7 +276,7 @@ const PlayerArea = memo(({ player, isMyTurn }: { player: PlayerData, isMyTurn: b
        <div className="w-full max-w-7xl mx-auto flex flex-col sm:flex-row items-center gap-4 sm:gap-8 min-h-[100px]">
           <div className="hidden lg:flex flex-none items-center gap-4 w-60 border-r border-white/5">
              <div className={`p-1 rounded-full bg-gradient-to-br ${isMyTurn ? 'from-emerald-400 to-teal-500' : 'from-slate-700 to-slate-800'}`}>
-                <PlayerAvatar sessionId={player?.sessionId} isActive={isMyTurn} size="lg" showName={false} showBadge={false} className="border-2 border-slate-950" />
+                <PlayerAvatar sessionId={player?.sessionId} isActive={isMyTurn} size="lg" showName={false} showBadge={false} />
              </div>
              <div className="flex flex-col min-w-0">
                 <span className="text-sm font-black font-display text-white uppercase truncate tracking-wide">{player?.displayName}</span>

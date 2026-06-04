@@ -567,6 +567,7 @@ export class TrioRoom extends Room<GameState> {
 
     private endGame(winner: string, reason: string) {
         this.state.status = "finished";
+        this.lock(); // Prevent new players from joining via matchmaker
         this.state.activePlayerSessionId = winner;
         this.log(`GAME_OVER:${winner}:${reason}`);
         
