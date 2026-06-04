@@ -109,23 +109,23 @@ export default function LeaderboardWidget() {
                 {/* Table Header Labels */}
                 <div className="grid grid-cols-[0.8fr_3.5fr_1fr_1fr_1fr] gap-4 px-8 py-4 mb-4 bg-white/[0.02] rounded-2xl border border-white/5 relative overflow-hidden group">
                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:animate-shimmer" style={{ animationDuration: '2s' }} />
-                   <span className="text-[10px] font-black font-display text-white/30 uppercase text-center tracking-widest">#</span>
-                   <span className="text-[10px] font-black font-display text-white/30 uppercase tracking-[0.2em]">Jogador</span>
-                   <span className="text-[10px] font-black font-display text-white/30 uppercase text-center tracking-widest">Part</span>
-                   <span className="text-[10px] font-black font-display text-white/30 uppercase text-center tracking-widest">Vits</span>
-                   <span className="text-[10px] font-black font-display text-white/30 uppercase text-center tracking-widest">Trios</span>
+                   <span className="text-[10px] font-black font-display text-white/60 uppercase text-center tracking-widest">#</span>
+                   <span className="text-[10px] font-black font-display text-white/60 uppercase tracking-[0.2em]">Jogador</span>
+                   <span className="text-[10px] font-black font-display text-white/60 uppercase text-center tracking-widest">Part</span>
+                   <span className="text-[10px] font-black font-display text-white/60 uppercase text-center tracking-widest">Vits</span>
+                   <span className="text-[10px] font-black font-display text-white/60 uppercase text-center tracking-widest">Trios</span>
                 </div>
 
                 <div className="space-y-3 max-h-[480px] overflow-y-auto pr-3 custom-scroll">
                   {loading && leaderboard.length === 0 ? (
                     <div className="py-24 text-center space-y-6">
                        <div className="w-10 h-10 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mx-auto shadow-[0_0_15px_rgba(16,185,129,0.2)]" />
-                       <p className="text-[11px] font-black font-display text-white/20 uppercase tracking-[0.4em]">Sincronizando Ranking...</p>
+                       <p className="text-[11px] font-black font-display text-white/50 uppercase tracking-[0.4em]">Sincronizando Ranking...</p>
                     </div>
                   ) : leaderboard.length === 0 ? (
                     <div className="py-24 text-center">
                        <Target className="mx-auto text-white/5 mb-6" size={56} />
-                       <p className="text-[11px] font-black font-display text-white/20 uppercase tracking-[0.4em]">Aguardando dados...</p>
+                       <p className="text-[11px] font-black font-display text-white/50 uppercase tracking-[0.4em]">Aguardando dados...</p>
                     </div>
                   ) : (
                     leaderboard.slice(0, 10).map((entry, i) => (
@@ -138,9 +138,9 @@ export default function LeaderboardWidget() {
                 <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between px-3">
                    <div className="flex items-center gap-2.5">
                       <div className="w-2 h-2 rounded-full bg-emerald-500/40 animate-pulse" />
-                      <span className="text-[10px] font-black font-display text-white/20 uppercase tracking-[0.2em]">Real-time Sync</span>
+                      <span className="text-[10px] font-black font-display text-white/60 uppercase tracking-[0.2em]">Real-time Sync</span>
                    </div>
-                   <p className="text-[10px] font-black font-display text-white/10 uppercase tracking-[0.2em] font-medium">v1.2.4 Beta</p>
+                   <p className="text-[10px] font-black font-display text-white/40 uppercase tracking-[0.2em] font-medium">v1.2.4 Beta</p>
                 </div>
               </div>
             </motion.div>
@@ -233,13 +233,13 @@ function LeaderboardRow({ entry, rank }: { entry: LeaderboardEntry, rank: number
             />
           )}
         </div>
-        <span className={`text-lg font-bold font-display truncate tracking-tight transition-colors antialiased ${isTopThree ? 'text-white' : 'text-white/60 group-hover:text-white'}`}>
+        <span className={`text-lg font-bold font-display truncate tracking-tight transition-colors antialiased ${isTopThree ? 'text-white' : 'text-white/90 group-hover:text-white'}`}>
           {entry.username}
         </span>
       </div>
 
       {/* Stats Columns */}
-      <span className="text-xs font-black font-display text-white/20 text-center group-hover:text-white/40 transition-colors tabular-nums">{entry.total_matches}</span>
+      <span className="text-xs font-black font-display text-white/40 text-center group-hover:text-white/70 transition-colors tabular-nums">{entry.total_matches}</span>
       
       <div className="flex justify-center">
         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all ${isTopThree ? 'bg-white/5' : 'bg-emerald-500/[0.03] border border-emerald-500/5 group-hover:border-emerald-500/20'}`}>

@@ -231,7 +231,7 @@ function MainMenu({
         placeholder="Seu apelido..."
         maxLength={16}
         disabled={isLoggedIn}
-        className="w-full bg-white/5 border border-white/15 rounded-2xl p-6 text-white text-lg placeholder:text-white/20"
+        className="w-full bg-white/5 border border-white/15 rounded-2xl p-6 text-white text-lg placeholder:text-white/40"
       />
 
       <button
@@ -256,7 +256,7 @@ function LobbyButton({ onClick, label, icon }: any) {
   return (
     <button onClick={onClick} className="py-6 bg-white/5 border border-white/10 rounded-2xl flex flex-col items-center gap-2 hover:bg-white/10 transition-all">
       {icon}
-      <span className="text-[10px] font-black tracking-widest uppercase">{label}</span>
+      <span className="text-[10px] font-black tracking-widest uppercase text-white/90">{label}</span>
     </button>
   );
 }
@@ -264,7 +264,7 @@ function LobbyButton({ onClick, label, icon }: any) {
 function CreateRoomPanel({ onConfirm, onBack, maxPlayers, setMaxPlayers, loading }: any) {
   return (
     <div className="space-y-6">
-      <h3 className="text-xs font-black text-white/40 uppercase text-center">Configurar Sala</h3>
+      <h3 className="text-xs font-black text-white/60 uppercase text-center tracking-widest">Configurar Sala</h3>
       <div className="flex gap-2 justify-center">
         {[2, 3, 4, 8].map(n => (
           <button key={n} onClick={() => setMaxPlayers(n)} className={`w-10 h-10 rounded-lg font-black ${maxPlayers === n ? 'bg-emerald-500 text-black' : 'bg-white/5'}`}>{n}</button>
@@ -294,14 +294,14 @@ function BrowseRoomsPanel({ rooms, onJoin, onBack }: any) {
   return (
     <div className="space-y-4">
       <div className="max-h-60 overflow-y-auto space-y-2">
-        {rooms.length === 0 ? <p className="text-center text-white/20 py-8">Nenhuma sala ativa</p> : rooms.map((r: any) => (
-          <button key={r.roomId} onClick={() => onJoin(r.roomId)} className="w-full p-4 bg-white/5 rounded-xl flex justify-between items-center">
-            <span className="font-bold">{r.hostName}</span>
+        {rooms.length === 0 ? <p className="text-center text-white/40 py-8">Nenhuma sala ativa</p> : rooms.map((r: any) => (
+          <button key={r.roomId} onClick={() => onJoin(r.roomId)} className="w-full p-4 bg-white/5 rounded-xl flex justify-between items-center group">
+            <span className="font-bold text-white/90 group-hover:text-white transition-colors">{r.hostName}</span>
             <span className="text-emerald-400 font-black">{r.playerCount}/{r.maxPlayers}</span>
           </button>
         ))}
       </div>
-      <button onClick={onBack} className="w-full py-4 bg-white/5 rounded-xl font-bold text-xs uppercase">Voltar</button>
+      <button onClick={onBack} className="w-full py-4 bg-white/5 rounded-xl font-bold text-xs uppercase text-white/60 hover:text-white transition-colors">Voltar</button>
     </div>
   );
 }

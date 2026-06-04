@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useGameStore, PlayerData, CardData, TrioData } from "../store/useGameStore";
 import { colyseusService } from "../networking/ColyseusService";
-import { usePreloader } from "./AssetPreloader";
 import PlayerAvatar from "./PlayerAvatar";
 import Card from "./Card";
 import TrioCinematic from "./game/TrioCinematic";
@@ -31,7 +30,7 @@ const Timer = memo(() => {
       <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all duration-500 ${col}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className={`text-[10px] font-mono font-bold tabular-nums ${pct < 20 ? "text-red-400" : "text-white/80"}`}>
+      <span className={`text-[10px] font-mono font-bold tabular-nums ${pct < 20 ? "text-red-400" : "text-white"}`}>
         {Math.floor(total / 60)}:{String(total % 60).padStart(2, "0")}
       </span>
     </div>
@@ -107,7 +106,7 @@ const GameHeader = memo(() => {
         )}
       </AnimatePresence>
 
-      <button onClick={() => colyseusService.leaveRoom()} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 transition-all text-white/30 group">
+      <button onClick={() => colyseusService.leaveRoom()} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/20 hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 transition-all text-white/70 group">
         <LogOut size={14} />
         <span className="text-[9px] font-black font-display uppercase tracking-widest hidden sm:inline">Abandonar</span>
       </button>
@@ -127,7 +126,6 @@ const CardRequestCinematic = memo(() => {
 
   useEffect(() => {
     if (event) {
-      // Faster animation: 1.2s instead of 2.5s
       const timer = setTimeout(clear, 1200);
       return () => clearTimeout(timer);
     }
@@ -149,7 +147,6 @@ const CardRequestCinematic = memo(() => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-      // Block background interaction while reveal is active
       className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-black/60 backdrop-blur-md"
     >
       <div className="flex flex-col items-center">
@@ -187,7 +184,6 @@ const OpponentSeat = memo(({ player, isActive, isMyTurn }: { player: PlayerData,
       className={`flex flex-col p-3 rounded-2xl border transition-all duration-500 min-w-[260px] 
         ${isActive ? 'bg-slate-900/80 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.1)] scale-105 z-10' : 'bg-slate-950/40 border-white/5 hover:bg-slate-950/60'}`}
     >
-       {/* ROW 1: [AVATAR - NAME] [SPACER] [TRIOS] */}
        <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-3">
              <div className="relative">
@@ -200,21 +196,19 @@ const OpponentSeat = memo(({ player, isActive, isMyTurn }: { player: PlayerData,
                 )}
              </div>
              <div className="flex flex-col min-w-0">
-                <span className={`text-[11px] font-black font-display uppercase tracking-wider truncate max-w-[100px] ${isActive ? 'text-emerald-400' : 'text-white/70'}`}>
+                <span className={`text-[11px] font-black font-display uppercase tracking-wider truncate max-w-[100px] ${isActive ? 'text-emerald-400' : 'text-white'}`}>
                    {player.displayName}
                 </span>
-                {/* ROW 2: Cartas Legend (Below avatar group but aligned to it) */}
-                <span className="text-[8px] font-mono text-white/30 tracking-widest uppercase">Cartas: {player.handCount}</span>
+                <span className="text-[8px] font-mono text-white/60 tracking-widest uppercase">Cartas: {player.handCount}</span>
              </div>
           </div>
 
           <div className="flex flex-col items-end">
-             <span className="text-[8px] font-black font-display text-white/20 uppercase tracking-[0.2em] mb-1.5">Trios</span>
+             <span className="text-[8px] font-black font-display text-white/40 uppercase tracking-[0.2em] mb-1.5">Trios</span>
              <FormedTriosPanel trios={player.trios} scale={0.65} />
           </div>
        </div>
 
-       {/* ROW 3: [MENOR] [MAIOR] side by side */}
        {isMyTurn && player.handCount > 0 && (
          <div className="flex gap-2 w-full mt-2 pt-2 border-t border-white/5">
             <button 
@@ -247,11 +241,8 @@ const TableSurface = memo(({ cards }: { cards: CardData[] }) => {
   return (
     <div className="flex-1 w-full relative flex items-center justify-center p-4 overflow-hidden">
        <div className="w-full h-full max-w-5xl max-h-[580px] aspect-[16/10] relative rounded-[4rem] border-[14px] border-slate-900 shadow-[0_40px_100px_rgba(0,0,0,0.6)] overflow-hidden bg-emerald-950">
-          
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#059669_0%,_#022c22_100%)]" />
           <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{ backgroundImage: "url('/table.png')", backgroundSize: "cover" }} />
-
-          {/* Cards Grid */}
           <div className="absolute inset-6 sm:inset-14 flex items-center justify-center">
              <div className="w-full h-full grid place-content-center place-items-center gap-2 sm:gap-4" 
                   style={{ gridTemplateColumns: "repeat(auto-fit, minmax(clamp(40px, 8vw, 85px), 1fr))" }}>
@@ -283,32 +274,26 @@ const PlayerArea = memo(({ player, isMyTurn }: { player: PlayerData, isMyTurn: b
        {isMyTurn && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute top-0 left-0 w-full h-0.5 bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,1)]" />}
 
        <div className="w-full max-w-7xl mx-auto flex flex-col sm:flex-row items-center gap-4 sm:gap-8 min-h-[100px]">
-          
-          {/* LEFT: Profile (HIDDEN ON MOBILE TO GAIN SPACE) */}
           <div className="hidden lg:flex flex-none items-center gap-4 w-60 border-r border-white/5">
              <div className={`p-1 rounded-full bg-gradient-to-br ${isMyTurn ? 'from-emerald-400 to-teal-500' : 'from-slate-700 to-slate-800'}`}>
                 <PlayerAvatar sessionId={player?.sessionId} isActive={isMyTurn} size="lg" showName={false} showBadge={false} className="border-2 border-slate-950" />
              </div>
              <div className="flex flex-col min-w-0">
                 <span className="text-sm font-black font-display text-white uppercase truncate tracking-wide">{player?.displayName}</span>
-                <span className={`text-[10px] font-black font-display tracking-[0.2em] uppercase ${isMyTurn ? 'text-emerald-400' : 'text-white/20'}`}>
+                <span className={`text-[10px] font-black font-display tracking-[0.2em] uppercase ${isMyTurn ? 'text-emerald-400' : 'text-white/60'}`}>
                    {isMyTurn ? "SEU TURNO" : "AGUARDANDO"}
                 </span>
              </div>
           </div>
 
-          {/* CENTER: Hand (DYNAMIC OVERLAP, NO SCROLL) */}
           <div className="flex-1 w-full h-[130px] flex items-center justify-center relative overflow-visible">
               <div className="flex items-end justify-center w-full max-w-5xl px-2">
                  {myHand.map((card, i) => {
                     const count = myHand.length;
                     const center = (count - 1) / 2;
                     const offset = i - center;
-                    
-                    // Intelligent overlap calculation to fit up to 20 cards without scroll
                     const maxOverlap = count > 12 ? -3.5 : count > 8 ? -3 : -2;
                     const overlapX = i === 0 ? 0 : `${maxOverlap}rem`;
-                    
                     const rotation = offset * (count > 10 ? 1.5 : 2.5);
                     const yOffset = Math.abs(offset) * (count > 10 ? 3 : 5);
                     
@@ -325,14 +310,13 @@ const PlayerArea = memo(({ player, isMyTurn }: { player: PlayerData, isMyTurn: b
                     );
                  })}
                  {myHand.length === 0 && (
-                    <span className="text-xs font-mono text-white/10 uppercase tracking-[0.4em] italic">Aguardando Distribuição</span>
+                    <span className="text-xs font-mono text-white/30 uppercase tracking-[0.4em] italic">Aguardando Distribuição</span>
                  )}
               </div>
           </div>
 
-          {/* RIGHT: Trios (INCREASED SCALE) */}
           <div className="flex-none flex flex-col items-center sm:items-end w-full sm:w-72 lg:pl-6">
-             <div className="flex items-center gap-2 mb-3 opacity-40">
+             <div className="flex items-center gap-2 mb-3 opacity-60">
                 <Trophy size={14} className="text-amber-400" />
                 <span className="text-[10px] font-black font-display text-white uppercase tracking-widest">Meus Trios</span>
              </div>
@@ -340,7 +324,6 @@ const PlayerArea = memo(({ player, isMyTurn }: { player: PlayerData, isMyTurn: b
                 <FormedTriosPanel trios={player?.trios || []} scale={1.35} />
              </div>
           </div>
-
        </div>
     </div>
   );
@@ -385,7 +368,6 @@ const GameTable: React.FC = memo(() => {
 
       <GameHeader />
 
-      {/* Opponents Row - Compact and Professional */}
       <div className="flex-none w-full overflow-hidden bg-gradient-to-b from-black/80 to-transparent z-40">
          <div className="flex items-start justify-center gap-4 px-4 pt-6 pb-2 overflow-x-auto custom-scroll-hidden">
             {opponents.map(p => (
@@ -400,7 +382,6 @@ const GameTable: React.FC = memo(() => {
          <PlayerArea player={players[mySid]} isMyTurn={isMyTurn} />
       )}
 
-      {/* Global Turn Glow */}
       <AnimatePresence>
         {isMyTurn && (
           <motion.div
