@@ -7,6 +7,9 @@ dist
 build
 *.log
 .DS_Store
+# directory for generated card images
+imagem-cartas/
+
 # Database
 prisma/dev.db
 prisma/dev.db-journal
