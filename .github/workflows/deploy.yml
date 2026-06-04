@@ -1,0 +1,54 @@
+name: CI/CD Deployment
+
+on:
+  push:
+    branches:
+      - sobe-nova-visu-a-pedido-dos-fans
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run Lint
+        run: pnpm run lint
+
+      - name: Run Tests
+        run: pnpm run test
+
+      - name: Build Project (Verification)
+        run: pnpm run build
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096" # GitHub runners have more RAM
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Execute Remote Deploy Script via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/TrioOnline
+            chmod +x deploy.sh
+            ./deploy.sh
