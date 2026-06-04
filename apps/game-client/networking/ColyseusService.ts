@@ -1,5 +1,6 @@
 import { Client, Room } from "colyseus.js";
 import { useGameStore, PlayerData, CardData, AppPhase } from "../store/useGameStore";
+import { SERVER_ENDPOINTS } from "../lib/serverEndpoint";
 
 /**
  * PROJECT TRINITY - ColyseusService
@@ -8,12 +9,12 @@ import { useGameStore, PlayerData, CardData, AppPhase } from "../store/useGameSt
  * and real-time state synchronization with Zustand store.
  */
 
-// Accept any URL format (https://, wss://, ws://, http://) and derive both WS and HTTP
-const RAW_URL = (process.env.NEXT_PUBLIC_GAME_SERVER_URL || "ws://localhost:2567").replace(/\/$/, "");
-const SERVER_URL = RAW_URL.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
-const HTTP_URL = RAW_URL.replace(/^wss:\/\//, "https://").replace(/^ws:\/\//, "http://");
-
 const SESSION_KEY = "trinity_session";
+
+function normalizeConnectionError(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error;
+  return new Error(`${fallback}. Verifique se o servidor está online em ${SERVER_ENDPOINTS.httpUrl}.`);
+}
 
 interface SavedSession {
   roomId: string;
@@ -27,7 +28,7 @@ class ColyseusService {
   private room: Room | null = null;
 
   constructor() {
-    this.client = new Client(SERVER_URL);
+    this.client = new Client(SERVER_ENDPOINTS.wsUrl);
   }
 
   // ── Session persistence ──
@@ -77,107 +78,141 @@ class ColyseusService {
 
   // === ROOM MANAGEMENT ===
 
+  private async wrapAction<T>(promise: Promise<T>): Promise<T> {
+    const store = useGameStore.getState();
+    if (store.isProcessing) return promise; // Already processing
+    store.setProcessing(true);
+    try {
+      const result = await promise;
+      return result;
+    } finally {
+      // Small delay to prevent immediate re-clicks
+      setTimeout(() => store.setProcessing(false), 300);
+    }
+  }
+
   public async createRoom(options: {
     isPrivate?: boolean;
     maxPlayers?: number;
     displayName?: string;
     userId?: string;
   }) {
-    try {
-      this.room = await this.client.create("trio_room", {
-        isPrivate: options.isPrivate || false,
-        maxPlayers: options.maxPlayers || 8,
-        displayName: options.displayName || "Player",
-        userId: options.userId,
-        hostName: options.displayName || "Player",
-      });
+    return this.wrapAction((async () => {
+      try {
+        this.room = await this.client.create("trio_room", {
+          isPrivate: options.isPrivate || false,
+          maxPlayers: options.maxPlayers || 8,
+          displayName: options.displayName || "Player",
+          userId: options.userId,
+          avatarUrl: useGameStore.getState().authUser?.avatar_url,
+          hostName: options.displayName || "Player",
+        });
 
-      this.setupSync();
-      useGameStore.getState().setMySessionId(this.room.sessionId);
-      useGameStore.getState().setPhase("room");
-      this.saveSession();
-      return this.room;
-    } catch (e) {
-      console.error("[ColyseusService] Create room failed:", e);
-      throw e;
-    }
+        this.setupSync();
+        useGameStore.getState().setMySessionId(this.room.sessionId);
+        useGameStore.getState().setPhase("room");
+        this.saveSession();
+        return this.room;
+      } catch (e) {
+        if (process.env.NODE_ENV !== "development") console.error("[ColyseusService] Create room failed:", e);
+        throw normalizeConnectionError(e, "Não foi possível criar a sala");
+      }
+    })());
   }
 
   public async joinRoom(roomId: string, options: {
     displayName?: string;
     userId?: string;
+    isObserver?: boolean;
   } = {}) {
-    try {
-      this.room = await this.client.joinById(roomId, {
-        displayName: options.displayName || "Player",
-        userId: options.userId,
-      });
+    return this.wrapAction((async () => {
+      try {
+        this.room = await this.client.joinById(roomId, {
+          displayName: options.displayName || "Player",
+          userId: options.userId,
+          isObserver: options.isObserver,
+          avatarUrl: useGameStore.getState().authUser?.avatar_url,
+        });
 
-      this.setupSync();
-      useGameStore.getState().setMySessionId(this.room.sessionId);
-      useGameStore.getState().setPhase("room");
-      this.saveSession();
-      return this.room;
-    } catch (e) {
-      console.error("[ColyseusService] Join room failed:", e);
-      throw e;
-    }
+        this.setupSync();
+        useGameStore.getState().setMySessionId(this.room.sessionId);
+        useGameStore.getState().setPhase("room");
+        this.saveSession();
+        return this.room;
+      } catch (e) {
+        if (process.env.NODE_ENV !== "development") console.error("[ColyseusService] Join room failed:", e);
+        throw normalizeConnectionError(e, "Não foi possível entrar na sala");
+      }
+    })());
+  }
+
+  public async observeRoom(roomId: string, options: {
+    displayName?: string;
+    userId?: string;
+  } = {}) {
+    return this.joinRoom(roomId, { ...options, isObserver: true });
   }
 
   public async joinByCode(code: string, options: {
     displayName?: string;
     userId?: string;
+    isObserver?: boolean;
   } = {}) {
-    try {
-      const res = await fetch(`${HTTP_URL}/join-by-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: code.toUpperCase() }),
-      });
+    return this.wrapAction((async () => {
+      try {
+        const res = await fetch(`${SERVER_ENDPOINTS.httpUrl}/join-by-code`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: code.toUpperCase() }),
+        });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Room not found");
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Room not found");
+        }
+
+        const { roomId } = await res.json();
+        return this.joinRoom(roomId, options);
+      } catch (e) {
+        if (process.env.NODE_ENV !== "development") console.error("[ColyseusService] Join by code failed:", e);
+        throw normalizeConnectionError(e, "Não foi possível entrar com este código");
       }
-
-      const { roomId } = await res.json();
-      return this.joinRoom(roomId, options);
-    } catch (e) {
-      console.error("[ColyseusService] Join by code failed:", e);
-      throw e;
-    }
+    })());
   }
 
   public async quickMatch(options: {
     displayName?: string;
     userId?: string;
   } = {}) {
-    try {
-      this.room = await this.client.joinOrCreate("trio_room", {
-        displayName: options.displayName || "Player",
-        userId: options.userId,
-        hostName: options.displayName || "Player", // Ensure hostName is set if room is created
-      });
+    return this.wrapAction((async () => {
+      try {
+        this.room = await this.client.joinOrCreate("trio_room", {
+          displayName: options.displayName || "Player",
+          userId: options.userId,
+          avatarUrl: useGameStore.getState().authUser?.avatar_url,
+          hostName: options.displayName || "Player", // Ensure hostName is set if room is created
+        });
 
-      this.setupSync();
-      useGameStore.getState().setMySessionId(this.room.sessionId);
-      useGameStore.getState().setPhase("room");
-      this.saveSession();
-      return this.room;
-    } catch (e) {
-      console.error("[ColyseusService] Quick match failed:", e);
-      throw e;
-    }
+        this.setupSync();
+        useGameStore.getState().setMySessionId(this.room.sessionId);
+        useGameStore.getState().setPhase("room");
+        this.saveSession();
+        return this.room;
+      } catch (e) {
+        if (process.env.NODE_ENV !== "development") console.error("[ColyseusService] Quick match failed:", e);
+        throw normalizeConnectionError(e, "Não foi possível iniciar uma partida rápida");
+      }
+    })());
   }
 
   public async fetchRooms() {
     try {
-      const res = await fetch(`${HTTP_URL}/rooms`);
+      const res = await fetch(`${SERVER_ENDPOINTS.httpUrl}/rooms`);
       const data = await res.json();
       useGameStore.getState().setAvailableRooms(data.rooms || []);
       return data.rooms;
     } catch (e) {
-      console.error("[ColyseusService] Fetch rooms failed:", e);
+      if (process.env.NODE_ENV !== "development") console.error("[ColyseusService] Fetch rooms failed:", e);
       return [];
     }
   }
@@ -208,16 +243,20 @@ class ColyseusService {
     this.room?.send("NUDGE", { targetSessionId });
   }
 
+  public sendChatMessage(text: string) {
+    this.room?.send("CHAT", { text });
+  }
+
   public sendRevealTableCard(cardIndex: number) {
-    this.room?.send("REVEAL_TABLE_CARD", { cardIndex });
+    return this.wrapAction(Promise.resolve(this.room?.send("REVEAL_TABLE_CARD", { cardIndex })));
   }
 
   public sendAskPlayerCard(targetSessionId: string, position: "lowest" | "highest") {
-    this.room?.send("ASK_PLAYER_CARD", { targetSessionId, position });
+    return this.wrapAction(Promise.resolve(this.room?.send("ASK_PLAYER_CARD", { targetSessionId, position })));
   }
 
   public sendRevealOwnCard(position: "lowest" | "highest") {
-    this.room?.send("REVEAL_OWN_CARD", { position });
+    return this.wrapAction(Promise.resolve(this.room?.send("REVEAL_OWN_CARD", { position })));
   }
 
   public sendCloseRoom() {
@@ -432,6 +471,19 @@ class ColyseusService {
     // Action log
     this.room.state.actionLogWindow.onAdd((msg: string) => {
       store().addActionLog(msg);
+
+      // Parse HAND_REVEAL to trigger cinematic overlay
+      // Format: HAND_REVEAL:actorSid:targetSid:position:value
+      if (msg.startsWith("HAND_REVEAL:")) {
+        const parts = msg.split(":");
+        if (parts.length >= 5) {
+          const fromSid = parts[1];
+          const toSid = parts[2];
+          const position = parts[3] as "lowest" | "highest";
+          const cardValue = parseInt(parts[4]);
+          store().triggerCardRequest(fromSid, toSid, position, cardValue);
+        }
+      }
     });
 
     // Error messages from server
@@ -457,6 +509,10 @@ class ColyseusService {
 
     this.room.onMessage("PLAYER_EMOTE", (payload: { sessionId: string; emote: string }) => {
       store().triggerEmote(payload.sessionId, payload.emote);
+    });
+
+    this.room.onMessage("CHAT_MESSAGE", (payload: { sessionId: string; displayName: string; text: string; ts: number }) => {
+      store().addChatMessage(payload);
     });
 
     this.room.onMessage("TRIO_CINEMATIC", (payload: { sid: string; value: number; playerName: string }) => {

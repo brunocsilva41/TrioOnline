@@ -1,16 +1,22 @@
 "use client";
 
-import React, { memo, useMemo, useState, useEffect } from "react";
+import React, { memo, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { useGameStore, PlayerData } from "../store/useGameStore";
+import { useGameStore, PlayerData, CardData, TrioData } from "../store/useGameStore";
 import { colyseusService } from "../networking/ColyseusService";
 import { usePreloader } from "./AssetPreloader";
+import PlayerAvatar from "./PlayerAvatar";
 import Card from "./Card";
 import TrioCinematic from "./game/TrioCinematic";
 import EmoteRain from "./game/EmoteRain";
+import GameChat from "./game/GameChat";
+import { LogOut, ArrowDownToLine, ArrowUpToLine, Trophy, Clock, Swords } from "lucide-react";
+import CardImage from "./CardImage";
 
-/* ━━━ Timer ━━━ */
+// ==========================================
+// 1. SHARED COMPONENTS
+// ==========================================
 const Timer = memo(() => {
   const cur = useGameStore((s) => s.currentTick);
   const exp = useGameStore((s) => s.expirationTick);
@@ -20,11 +26,12 @@ const Timer = memo(() => {
   const total = Math.ceil(rem / 20);
   const col = pct < 20 ? "bg-red-500" : pct < 50 ? "bg-amber-400" : "bg-emerald-400";
   return (
-    <div className="flex items-center gap-2">
-      <div className="w-20 h-[5px] bg-white/10 rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all duration-300 ${col}`} style={{ width: `${pct}%` }} />
+    <div className="flex items-center gap-2 bg-black/60 px-3 py-1.5 rounded-lg border border-white/10 shadow-inner">
+      <Clock size={12} className={pct < 20 ? "text-red-400" : "text-emerald-400"} />
+      <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all duration-500 ${col}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className={`text-[10px] font-mono font-bold tabular-nums ${pct < 20 ? "text-red-400" : "text-white/40"}`}>
+      <span className={`text-[10px] font-mono font-bold tabular-nums ${pct < 20 ? "text-red-400" : "text-white/80"}`}>
         {Math.floor(total / 60)}:{String(total % 60).padStart(2, "0")}
       </span>
     </div>
@@ -32,496 +39,382 @@ const Timer = memo(() => {
 });
 Timer.displayName = "Timer";
 
-/* ━━━ Opponent with ask buttons directly on icon ━━━ */
-function OpponentSeat({ player, isActive, isMyTurn }: {
-  player: PlayerData; isActive: boolean; isMyTurn: boolean;
-}) {
-  const ch = player.displayName?.charAt(0)?.toUpperCase() || "?";
-  const revealed = player.hand?.filter(c => c.isRevealed) || [];
-  
-  const emoteEvent = useGameStore((s) => s.emoteEvent);
-  const nudgeEvent = useGameStore((s) => s.nudgeEvent);
-  const isEmoting = emoteEvent?.sessionId === player.sessionId && (Date.now() - emoteEvent.ts < 3000);
-  const isNudged = nudgeEvent?.to === player.sessionId && (Date.now() - nudgeEvent.ts < 1000);
+const FormedTriosPanel = memo(({ trios, scale = 1 }: { trios: TrioData[], scale?: number }) => {
+  if (!trios || trios.length === 0) return null;
+
+  const baseW = 36 * scale;
+  const baseH = 54 * scale;
 
   return (
-    <div className="flex items-start gap-2">
-      {/* ══ LEFT: Trios ══ */}
-      {player.trios?.length > 0 ? (
-        <div className="flex flex-col gap-1 w-8 items-end justify-start mt-2">
-          {player.trios.map((t, i) => (
-            <motion.div key={i} initial={{ scale: 0, x: 20 }} animate={{ scale: 1, x: 0 }}
-              className="relative w-8 h-[48px] rounded-md overflow-hidden ring-2 ring-amber-500/60 shadow-[0_5px_15px_rgba(251,191,36,0.3)]">
-              <Image src={`/cards/card_${t.value}.webp`} alt="" fill sizes="32px" className="object-cover" />
-              <div className="absolute top-0 right-0 bg-amber-400 text-black text-[6px] font-black px-1 rounded-bl shadow-md">T</div>
-            </motion.div>
-          ))}
-        </div>
-      ) : (
-        <div className="w-8" />
-      )}
-
-      {/* ══ CENTER: Avatar & Info ══ */}
-      <div className="relative flex flex-col items-center gap-1 group z-20">
-        {/* Emote Display */}
-        <AnimatePresence>
-          {isEmoting && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.5 }}
-              animate={{ opacity: 1, y: -25, scale: 1.5 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="absolute -top-10 text-3xl z-50 pointer-events-none drop-shadow-2xl"
-            >
-              {emoteEvent.emote}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Avatar */}
-        <motion.div 
-          animate={isNudged ? { x: [-5, 5, -5, 5, 0], transition: { duration: 0.4 } } : {}}
-          className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center border-[3px]
-          ${isActive ? "border-amber-400 bg-gradient-to-br from-amber-800/60 to-amber-950/60 shadow-[0_0_25px_rgba(251,191,36,0.5)]"
-            : "border-white/20 bg-white/5"}
-          ${!player.isOnline ? "opacity-30 grayscale" : ""}
-        `}>
-          <span className={`font-black text-lg sm:text-xl ${isActive ? "text-amber-300 drop-shadow-lg" : "text-white/60"}`}>{ch}</span>
-          <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#1a0e08] shadow-md ${player.isOnline ? "bg-emerald-400" : "bg-red-400"}`} />
-          {isActive && (
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-              className="absolute -inset-1.5 rounded-full border-[3px] border-transparent border-t-amber-400/80 pointer-events-none drop-shadow-lg" />
-          )}
+    <div className="flex flex-wrap gap-2">
+      {trios.map((trio, idx) => (
+        <motion.div key={idx} initial={{ scale: 0, x: -10 }} animate={{ scale: 1, x: 0 }} 
+          style={{ width: baseW, height: baseH }}
+          className="relative flex items-center justify-center"
+        >
+           {[0, 1, 2].map((offset) => (
+             <div key={offset} className="absolute w-full h-full rounded-[2px] shadow-lg ring-1 ring-amber-400/20 overflow-hidden bg-slate-800" 
+                  style={{ transform: `translate(${offset * 3 * scale}px, ${offset * -2 * scale}px) rotate(${offset * 2}deg)`, zIndex: offset }}>
+                <Image src={`/cards/card_${trio.value}.webp`} alt={`Trio ${trio.value}`} fill sizes="60px" className="object-cover" />
+             </div>
+           ))}
         </motion.div>
-
-        {/* Name */}
-        <span className={`text-[10px] sm:text-xs font-black max-w-[80px] truncate uppercase tracking-widest mt-1 ${isActive ? "text-amber-300 drop-shadow-md" : "text-white/50"}`}>
-          {player.displayName}
-        </span>
-        <span className="text-[8px] font-mono text-white/30 tracking-widest">{player.handCount} CARTAS</span>
-
-        {/* ══ ASK BUTTONS ══ */}
-        {isMyTurn && player.handCount > 0 && (
-          <div className="flex gap-1.5 mt-1">
-            <button
-              onClick={() => colyseusService.sendAskPlayerCard(player.sessionId, "lowest")}
-              className="px-2.5 py-1.5 rounded-md bg-sky-600/90 hover:bg-sky-500 text-[9px] font-black text-white uppercase tracking-widest
-                shadow-[0_4px_10px_rgba(2,132,199,0.4)] hover:scale-105 active:scale-95 transition-all"
-            >
-              ▼ MENOR
-            </button>
-            <button
-              onClick={() => colyseusService.sendAskPlayerCard(player.sessionId, "highest")}
-              className="px-2.5 py-1.5 rounded-md bg-fuchsia-600/90 hover:bg-fuchsia-500 text-[9px] font-black text-white uppercase tracking-widest
-                shadow-[0_4px_10px_rgba(192,38,211,0.4)] hover:scale-105 active:scale-95 transition-all"
-            >
-              ▲ MAIOR
-            </button>
-          </div>
-        )}
-
-        {/* Revealed cards */}
-        <AnimatePresence>
-          {revealed.length > 0 && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-              className="flex gap-1.5 mt-1 overflow-hidden">
-              {revealed.map((card) => (
-                <motion.div key={card.id} initial={{ scale: 0, rotateY: 180 }} animate={{ scale: 1, rotateY: 0 }}
-                  exit={{ scale: 0, rotateY: -180 }} transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                  className="relative w-10 h-[60px] rounded-md overflow-hidden shadow-[0_5px_15px_rgba(0,0,0,0.5)] ring-2 ring-amber-400/70">
-                  <Image src={`/cards/card_${card.value}.webp`} alt={`${card.value}`} fill sizes="40px" className="object-cover" />
-                  <motion.div initial={{ opacity: 0.6 }} animate={{ opacity: 0 }} transition={{ duration: 1.5 }}
-                    className="absolute inset-0 bg-amber-300/30 pointer-events-none" />
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* ══ RIGHT: Social Menu (Permanently Visible, Horizontal) ══ */}
-      <div className="flex gap-1 items-start mt-2 pointer-events-auto z-30">
-        <button onClick={() => colyseusService.sendEmote("❤️")} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-[10px] sm:text-xs shadow-[0_3px_10px_rgba(0,0,0,0.3)] hover:scale-110 active:scale-95 transition-all">❤️</button>
-        <button onClick={() => colyseusService.sendEmote("😂")} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-[10px] sm:text-xs shadow-[0_3px_10px_rgba(0,0,0,0.3)] hover:scale-110 active:scale-95 transition-all">😂</button>
-        <button onClick={() => colyseusService.sendNudge(player.sessionId)} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-indigo-500/80 hover:bg-indigo-400 flex items-center justify-center text-[10px] sm:text-xs text-white font-bold shadow-[0_3px_10px_rgba(99,102,241,0.4)] hover:scale-110 active:scale-95 transition-all">👉</button>
-      </div>
+      ))}
     </div>
   );
-}
+});
+FormedTriosPanel.displayName = "FormedTriosPanel";
 
-/* ━━━ MAIN ━━━ */
-const GameTable: React.FC = memo(() => {
-  const { isReady, progress } = usePreloader();
-  const players = useGameStore((s) => s.players);
-  const tableCards = useGameStore((s) => s.tableCards);
-  const myHand = useGameStore((s) => s.myHand);
-  const activeSid = useGameStore((s) => s.activePlayerSessionId);
-  const mySid = useGameStore((s) => s.mySessionId);
-  const phase = useGameStore((s) => s.phase);
+// ==========================================
+// 2. HEADER
+// ==========================================
+const GameHeader = memo(() => {
   const round = useGameStore((s) => s.round);
   const logs = useGameStore((s) => s.actionLogWindow);
-  const hostSid = useGameStore((s) => s.hostSessionId);
-
-  const playerList = useMemo(() => Object.values(players), [players]);
-  const opponents = useMemo(() => playerList.filter(p => p.sessionId !== mySid), [playerList, mySid]);
-  const isMyTurn = activeSid === mySid;
-  const activeName = activeSid ? players[activeSid]?.displayName : "";
-  const myPlayer = players[mySid];
-  const isHost = mySid === hostSid;
-
-  const visibleCards = useMemo(() => tableCards.filter(c => c.location !== "scored"), [tableCards]);
-
-  const gridCols = useMemo(() => {
-    const n = visibleCards.length;
-    if (n <= 8) return 4;
-    if (n <= 18) return 6;
-    return 6;
-  }, [visibleCards.length]);
-
-  const tableDimensions = useMemo(() => {
-    const n = visibleCards.length;
-    const cols = gridCols;
-    const rows = Math.ceil(n / cols) || 1;
-    
-    // We assume the max card size from clamp and a reasonable gap
-    const cardW = 72; 
-    const cardH = 108;
-    const gap = 12;
-    const padding = 16; // 12px requested + 4px safety
-
-    const width = (cols * cardW) + ((cols - 1) * gap) + (padding * 2);
-    const height = (rows * cardH) + ((rows - 1) * gap) + (padding * 2);
-
-    return {
-      width: `clamp(${width}px, 95vw, 1100px)`,
-      minHeight: `${height}px`
-    };
-  }, [visibleCards.length, gridCols]);
-
-  const trioCinematicEvent = useGameStore((s) => s.trioCinematicEvent);
-  const clearTrioCinematic = useGameStore((s) => s.clearTrioCinematic);
+  const mySid = useGameStore((s) => s.mySessionId);
+  const players = useGameStore((s) => s.players);
+  const isMyTurn = useGameStore((s) => s.activePlayerSessionId) === mySid;
 
   const lastEvent = useMemo(() => {
     if (!logs.length) return "";
     const l = logs[logs.length - 1];
-    if (l.startsWith("MATCH_TARGET:")) return `Procurando: carta ${l.split(":")[1]}`;
-    if (l.startsWith("MATCH:")) return "Carta igual encontrada!";
-    if (l.startsWith("MISMATCH:")) return "Não combinou — vez encerrada";
-    if (l.startsWith("TRIO_COMPLETE:")) return `TRIO DE ${l.split(":")[2]}s COMPLETO!`;
-    if (l.startsWith("TURN_START:")) { const sid = l.split(":")[1]; return sid === mySid ? "Sua vez!" : `Vez de ${players[sid]?.displayName}`; }
-    if (l.startsWith("HAND_REVEAL:")) { const p = l.split(":"); return `Carta ${p[3] === "lowest" ? "menor" : "maior"} revelada: ${p[4]}`; }
-    if (l.startsWith("OWN_REVEAL:") || l.startsWith("AUTO_REVEAL:")) { const p = l.split(":"); return `Sua ${p[2] === "lowest" ? "menor" : "maior"} revelada: ${p[3]}`; }
-    if (l.startsWith("GAME_OVER:")) return "Partida encerrada!";
+    if (l.startsWith("MATCH_TARGET:")) return "Buscando...";
+    if (l.startsWith("MATCH:")) return "Combinado!";
+    if (l.startsWith("MISMATCH:")) return "Vez encerrada";
+    if (l.startsWith("TRIO_COMPLETE:")) return `Trio completo!`;
+    if (l.startsWith("TURN_START:")) { const sid = l.split(":")[1]; return sid === mySid ? "SUA VEZ" : players[sid]?.displayName.toUpperCase(); }
     return "";
   }, [logs, mySid, players]);
 
   return (
-    <div className="w-full h-screen flex flex-col overflow-hidden select-none relative bg-[#020617]">
-      
-      {/* ══ NEW RICH BACKGROUND ══ */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        {/* Radial Gradients */}
-        <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-[radial-gradient(circle_at_50%_50%,_rgba(16,185,129,0.1)_0%,_transparent_70%)]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-[radial-gradient(circle_at_50%_50%,_rgba(251,191,36,0.05)_0%,_transparent_70%)]" />
-        
-        {/* Dynamic Light Rays */}
-        <motion.div 
-          animate={{ rotate: 360 }}
-          transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vw] opacity-[0.03] mix-blend-screen"
-          style={{ background: "conic-gradient(from 0deg, transparent 0deg, #10b981 10deg, transparent 20deg, transparent 40deg, #f59e0b 50deg, transparent 60deg, transparent 80deg, #10b981 90deg, transparent 100deg)" }}
-        />
-
-        {/* Floating Particles */}
-        {Array.from({ length: 20 }).map((_, i) => (
-          <motion.div
-            key={`bg-part-${i}`}
-            className="absolute rounded-full bg-emerald-500/20 blur-[2px]"
-            style={{ width: Math.random() * 6 + 2, height: Math.random() * 6 + 2 }}
-            animate={{
-              y: ["100vh", "-10vh"],
-              x: [`${Math.random() * 100}vw`, `${Math.random() * 100}vw`],
-              opacity: [0, 0.6, 0]
-            }}
-            transition={{
-              duration: 10 + Math.random() * 10,
-              repeat: Infinity,
-              delay: Math.random() * 5,
-              ease: "linear"
-            }}
-          />
-        ))}
-
-        <TableCardShadows />
+    <div className="flex-none h-14 flex items-center justify-between px-4 sm:px-6 border-b border-white/5 bg-slate-950/80 backdrop-blur-2xl z-50">
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+          <Swords size={14} className="text-emerald-400" />
+          <span className="text-[11px] font-black font-display text-emerald-400 uppercase tracking-widest">R{round}</span>
+        </div>
+        <Timer />
       </div>
 
+      <AnimatePresence mode="wait">
+        {lastEvent && (
+          <motion.div key={lastEvent} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} 
+            className="hidden md:flex px-6 py-1.5 rounded-full bg-emerald-500/5 border border-emerald-500/20">
+            <span className={`text-[10px] font-black font-display tracking-[0.3em] uppercase ${isMyTurn ? "text-emerald-400" : "text-amber-400"}`}>
+              {lastEvent}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <button onClick={() => colyseusService.leaveRoom()} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 transition-all text-white/30 group">
+        <LogOut size={14} />
+        <span className="text-[9px] font-black font-display uppercase tracking-widest hidden sm:inline">Abandonar</span>
+      </button>
+    </div>
+  );
+});
+GameHeader.displayName = "GameHeader";
+
+// ==========================================
+// 3. CARD REQUEST CINEMATIC
+// ==========================================
+const CardRequestCinematic = memo(() => {
+  const event = useGameStore((s) => s.cardRequestEvent);
+  const clear = useGameStore((s) => s.clearCardRequest);
+  const players = useGameStore((s) => s.players);
+  const mySid = useGameStore((s) => s.mySessionId);
+
+  useEffect(() => {
+    if (event) {
+      // Faster animation: 1.2s instead of 2.5s
+      const timer = setTimeout(clear, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [event, clear]);
+
+  if (!event) return null;
+
+  const actor = players[event.fromSid];
+  const target = players[event.toSid];
+  if (!actor || !target) return null;
+
+  const isActorMe = event.fromSid === mySid;
+  const isTargetMe = event.toSid === mySid;
+
+  let message = "";
+  if (isActorMe) message = `Você pediu a ${event.position === "lowest" ? "menor" : "maior"} de ${target.displayName}`;
+  else if (isTargetMe) message = `${actor.displayName} pediu a sua ${event.position === "lowest" ? "menor" : "maior"} carta!`;
+  else message = `${actor.displayName} pediu a ${event.position === "lowest" ? "menor" : "maior"} de ${target.displayName}`;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+      // Block background interaction while reveal is active
+      className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-black/60 backdrop-blur-md"
+    >
+      <div className="flex flex-col items-center">
+         <motion.div initial={{ scale: 0.8, y: 100, rotateY: 90 }} animate={{ scale: 1, y: 0, rotateY: 0 }} transition={{ type: "spring", damping: 15 }}
+           className="relative w-40 h-60 sm:w-48 sm:h-72 rounded-2xl shadow-[0_0_60px_rgba(16,185,129,0.5)] border-2 border-emerald-400/50 overflow-hidden bg-slate-900"
+         >
+            <CardImage value={event.cardValue} eager />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex items-end justify-center pb-6">
+               <span className="text-6xl sm:text-7xl font-black font-display text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">{event.cardValue}</span>
+            </div>
+         </motion.div>
+         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+           className="mt-8 px-10 py-5 bg-slate-900/95 border border-emerald-500/20 rounded-[2rem] shadow-2xl text-center max-w-sm"
+         >
+            <p className="text-sm sm:text-base font-black font-display text-white uppercase tracking-widest leading-relaxed">{message}</p>
+            <div className="h-0.5 w-12 bg-emerald-500/40 mx-auto mt-3 rounded-full" />
+         </motion.div>
+      </div>
+    </motion.div>
+  );
+});
+CardRequestCinematic.displayName = "CardRequestCinematic";
+
+// ==========================================
+// 4. OPPONENTS
+// ==========================================
+const OpponentSeat = memo(({ player, isActive, isMyTurn }: { player: PlayerData, isActive: boolean, isMyTurn: boolean }) => {
+  const nudgeEvent = useGameStore((s) => s.nudgeEvent);
+  const isProcessing = useGameStore((s) => s.isProcessing);
+  const isNudged = nudgeEvent?.to === player.sessionId && (Date.now() - nudgeEvent.ts < 1000);
+
+  return (
+    <motion.div 
+      animate={isNudged ? { x: [-3, 3, -3, 3, 0], transition: { duration: 0.3 } } : {}}
+      className={`flex flex-col p-3 rounded-2xl border transition-all duration-500 min-w-[260px] 
+        ${isActive ? 'bg-slate-900/80 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.1)] scale-105 z-10' : 'bg-slate-950/40 border-white/5 hover:bg-slate-950/60'}`}
+    >
+       {/* ROW 1: [AVATAR - NAME] [SPACER] [TRIOS] */}
+       <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-3">
+             <div className="relative">
+                <div className={`p-1 rounded-full bg-gradient-to-br ${isActive ? 'from-emerald-400 to-teal-600 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'from-slate-700 to-slate-900'}`}>
+                   <PlayerAvatar sessionId={player.sessionId} isActive={isActive} showName={false} showBadge={false} size="lg" className="border-2 border-slate-950" />
+                </div>
+                {isActive && (
+                  <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }} 
+                    className="absolute inset-0 rounded-full border-2 border-emerald-400 pointer-events-none" />
+                )}
+             </div>
+             <div className="flex flex-col min-w-0">
+                <span className={`text-[11px] font-black font-display uppercase tracking-wider truncate max-w-[100px] ${isActive ? 'text-emerald-400' : 'text-white/70'}`}>
+                   {player.displayName}
+                </span>
+                {/* ROW 2: Cartas Legend (Below avatar group but aligned to it) */}
+                <span className="text-[8px] font-mono text-white/30 tracking-widest uppercase">Cartas: {player.handCount}</span>
+             </div>
+          </div>
+
+          <div className="flex flex-col items-end">
+             <span className="text-[8px] font-black font-display text-white/20 uppercase tracking-[0.2em] mb-1.5">Trios</span>
+             <FormedTriosPanel trios={player.trios} scale={0.65} />
+          </div>
+       </div>
+
+       {/* ROW 3: [MENOR] [MAIOR] side by side */}
+       {isMyTurn && player.handCount > 0 && (
+         <div className="flex gap-2 w-full mt-2 pt-2 border-t border-white/5">
+            <button 
+               disabled={isProcessing}
+               onClick={() => colyseusService.sendAskPlayerCard(player.sessionId, "lowest")} 
+               className="flex-1 flex items-center justify-center gap-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 rounded-lg transition-all active:scale-95 group disabled:opacity-50"
+            >
+               <ArrowDownToLine size={10} className="text-emerald-400 group-hover:scale-110 transition-transform" />
+               <span className="text-[9px] font-black font-display text-emerald-400 uppercase tracking-widest">Menor</span>
+            </button>
+            <button 
+               disabled={isProcessing}
+               onClick={() => colyseusService.sendAskPlayerCard(player.sessionId, "highest")} 
+               className="flex-1 flex items-center justify-center gap-2 py-1.5 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 hover:border-violet-500/40 rounded-lg transition-all active:scale-95 group disabled:opacity-50"
+            >
+               <ArrowUpToLine size={10} className="text-violet-400 group-hover:scale-110 transition-transform" />
+               <span className="text-[9px] font-black font-display text-violet-400 uppercase tracking-widest">Maior</span>
+            </button>
+         </div>
+       )}
+    </motion.div>
+  );
+});
+OpponentSeat.displayName = "OpponentSeat";
+
+// ==========================================
+// 5. TABLE
+// ==========================================
+const TableSurface = memo(({ cards }: { cards: CardData[] }) => {
+  return (
+    <div className="flex-1 w-full relative flex items-center justify-center p-4 overflow-hidden">
+       <div className="w-full h-full max-w-5xl max-h-[580px] aspect-[16/10] relative rounded-[4rem] border-[14px] border-slate-900 shadow-[0_40px_100px_rgba(0,0,0,0.6)] overflow-hidden bg-emerald-950">
+          
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#059669_0%,_#022c22_100%)]" />
+          <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{ backgroundImage: "url('/table.png')", backgroundSize: "cover" }} />
+
+          {/* Cards Grid */}
+          <div className="absolute inset-6 sm:inset-14 flex items-center justify-center">
+             <div className="w-full h-full grid place-content-center place-items-center gap-2 sm:gap-4" 
+                  style={{ gridTemplateColumns: "repeat(auto-fit, minmax(clamp(40px, 8vw, 85px), 1fr))" }}>
+                {cards.map((card, i) => (
+                   <div key={card.id} className="w-full aspect-[2/3] max-w-[85px] flex items-center justify-center">
+                     {card.location !== "scored" ? (
+                        <Card cardData={card} index={i} location="table" />
+                     ) : (
+                        <div className="w-full h-full opacity-0 pointer-events-none" />
+                     )}
+                   </div>
+                ))}
+             </div>
+          </div>
+       </div>
+    </div>
+  );
+});
+TableSurface.displayName = "TableSurface";
+
+// ==========================================
+// 6. PLAYER AREA
+// ==========================================
+const PlayerArea = memo(({ player, isMyTurn }: { player: PlayerData, isMyTurn: boolean }) => {
+  const myHand = useGameStore((s) => s.myHand);
+
+  return (
+    <div className="flex-none bg-slate-950/95 border-t border-white/10 z-40 relative px-4 sm:px-8 py-3 shadow-[0_-15px_40px_rgba(0,0,0,0.5)]">
+       {isMyTurn && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute top-0 left-0 w-full h-0.5 bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,1)]" />}
+
+       <div className="w-full max-w-7xl mx-auto flex flex-col sm:flex-row items-center gap-4 sm:gap-8 min-h-[100px]">
+          
+          {/* LEFT: Profile (HIDDEN ON MOBILE TO GAIN SPACE) */}
+          <div className="hidden lg:flex flex-none items-center gap-4 w-60 border-r border-white/5">
+             <div className={`p-1 rounded-full bg-gradient-to-br ${isMyTurn ? 'from-emerald-400 to-teal-500' : 'from-slate-700 to-slate-800'}`}>
+                <PlayerAvatar sessionId={player?.sessionId} isActive={isMyTurn} size="lg" showName={false} showBadge={false} className="border-2 border-slate-950" />
+             </div>
+             <div className="flex flex-col min-w-0">
+                <span className="text-sm font-black font-display text-white uppercase truncate tracking-wide">{player?.displayName}</span>
+                <span className={`text-[10px] font-black font-display tracking-[0.2em] uppercase ${isMyTurn ? 'text-emerald-400' : 'text-white/20'}`}>
+                   {isMyTurn ? "SEU TURNO" : "AGUARDANDO"}
+                </span>
+             </div>
+          </div>
+
+          {/* CENTER: Hand (DYNAMIC OVERLAP, NO SCROLL) */}
+          <div className="flex-1 w-full h-[130px] flex items-center justify-center relative overflow-visible">
+              <div className="flex items-end justify-center w-full max-w-5xl px-2">
+                 {myHand.map((card, i) => {
+                    const count = myHand.length;
+                    const center = (count - 1) / 2;
+                    const offset = i - center;
+                    
+                    // Intelligent overlap calculation to fit up to 20 cards without scroll
+                    const maxOverlap = count > 12 ? -3.5 : count > 8 ? -3 : -2;
+                    const overlapX = i === 0 ? 0 : `${maxOverlap}rem`;
+                    
+                    const rotation = offset * (count > 10 ? 1.5 : 2.5);
+                    const yOffset = Math.abs(offset) * (count > 10 ? 3 : 5);
+                    
+                    return (
+                      <motion.div key={card.id} 
+                        className="w-[75px] sm:w-[95px] aspect-[2/3] relative flex-shrink-0"
+                        style={{ marginLeft: overlapX, zIndex: i }}
+                        animate={{ rotate: rotation, y: yOffset }}
+                        whileHover={{ y: -35, scale: 1.15, zIndex: 100, rotate: 0 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      >
+                         <Card cardData={card} index={i} location="hand" />
+                      </motion.div>
+                    );
+                 })}
+                 {myHand.length === 0 && (
+                    <span className="text-xs font-mono text-white/10 uppercase tracking-[0.4em] italic">Aguardando Distribuição</span>
+                 )}
+              </div>
+          </div>
+
+          {/* RIGHT: Trios (INCREASED SCALE) */}
+          <div className="flex-none flex flex-col items-center sm:items-end w-full sm:w-72 lg:pl-6">
+             <div className="flex items-center gap-2 mb-3 opacity-40">
+                <Trophy size={14} className="text-amber-400" />
+                <span className="text-[10px] font-black font-display text-white uppercase tracking-widest">Meus Trios</span>
+             </div>
+             <div className="flex justify-center sm:justify-end w-full overflow-visible">
+                <FormedTriosPanel trios={player?.trios || []} scale={1.35} />
+             </div>
+          </div>
+
+       </div>
+    </div>
+  );
+});
+PlayerArea.displayName = "PlayerArea";
+
+// ==========================================
+// MAIN BOARD
+// ==========================================
+const GameTable: React.FC = memo(() => {
+  const players = useGameStore((s) => s.players);
+  const tableCards = useGameStore((s) => s.tableCards);
+  const activeSid = useGameStore((s) => s.activePlayerSessionId);
+  const mySid = useGameStore((s) => s.mySessionId);
+  
+  const sortedPlayers = useMemo(() => {
+    return Object.values(players).sort((a, b) => a.sessionId.localeCompare(b.sessionId));
+  }, [players]);
+
+  const opponents = useMemo(() => sortedPlayers.filter(p => p.sessionId !== mySid), [sortedPlayers, mySid]);
+  const isMyTurn = activeSid === mySid;
+  const trioCinematicEvent = useGameStore((s) => s.trioCinematicEvent);
+  const clearTrioCinematic = useGameStore((s) => s.clearTrioCinematic);
+
+  return (
+    <div className="w-full h-[100dvh] flex flex-col overflow-hidden select-none bg-slate-950 font-sans">
       <EmoteRain />
+      <GameChat />
 
       <AnimatePresence>
         {trioCinematicEvent && (
           <TrioCinematic 
             key={`${trioCinematicEvent.sid}-${trioCinematicEvent.value}-${trioCinematicEvent.ts}`}
-            playerName={trioCinematicEvent.playerName} 
-            cardValue={trioCinematicEvent.value} 
-            onComplete={clearTrioCinematic} 
+            playerName={trioCinematicEvent.playerName} cardValue={trioCinematicEvent.value} onComplete={clearTrioCinematic} 
           />
         )}
       </AnimatePresence>
 
-
       <AnimatePresence>
-        {!isReady && (
-          <motion.div
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[100] bg-[#020617] flex flex-col items-center justify-center"
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full mb-6"
-            />
-            <h2 className="text-sm font-black tracking-[0.5em] text-emerald-500 uppercase mb-2">
-              SINCRONIZANDO ATIVOS
-            </h2>
-            <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
-              <motion.div 
-                className="h-full bg-emerald-500 shadow-[0_0_10px_#10b981]"
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="mt-4 text-[10px] text-white/20 font-mono tracking-widest uppercase">
-              Otimizando Experiência...
-            </p>
-          </motion.div>
-        )}
+         <CardRequestCinematic />
       </AnimatePresence>
 
-      {/* ═══ HUD ═══ */}
-      <div className="flex-none h-10 flex items-center justify-between px-3 border-b border-white/5 bg-black/30 z-50">
-        <div className="flex items-center gap-2">
-          <div className="px-2 py-0.5 rounded bg-white/5 border border-white/10">
-            <span className="text-[9px] font-bold tracking-widest text-amber-400/80 uppercase">Rodada {round}</span>
-          </div>
-          <Timer />
-        </div>
-        <div className="flex items-center gap-2">
-          <AnimatePresence mode="wait">
-            {lastEvent && (
-              <motion.div key={lastEvent} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
-                className="px-2.5 py-0.5 rounded-lg bg-black/50 border border-white/10 max-w-[250px]">
-                <span className="text-[9px] font-bold text-amber-200/90 block truncate">{lastEvent}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          {isHost ? (
-            <div className="flex items-center gap-1.5 ml-2">
-              <button onClick={() => colyseusService.leaveRoom()}
-                className="px-2 py-1 rounded border border-white/20 text-[8px] font-bold text-white/70 hover:bg-white/10 hover:text-white transition-all">
-                Sair
-              </button>
-              <button onClick={() => colyseusService.sendCloseRoom()}
-                className="px-2 py-1 rounded bg-red-900/30 border border-red-500/20 text-[8px] font-bold text-red-400/70 hover:bg-red-900/50 hover:text-red-300 transition-all">
-                Encerrar Partida
-              </button>
-            </div>
-          ) : (
-            <button onClick={() => colyseusService.leaveRoom()}
-              className="px-2 py-1 ml-2 rounded bg-red-900/30 border border-red-500/20 text-[8px] font-bold text-red-400/70 hover:bg-red-900/50 hover:text-red-300 transition-all">
-              Sair da Partida
-            </button>
-          )}
-        </div>
+      <GameHeader />
+
+      {/* Opponents Row - Compact and Professional */}
+      <div className="flex-none w-full overflow-hidden bg-gradient-to-b from-black/80 to-transparent z-40">
+         <div className="flex items-start justify-center gap-4 px-4 pt-6 pb-2 overflow-x-auto custom-scroll-hidden">
+            {opponents.map(p => (
+               <OpponentSeat key={p.sessionId} player={p} isActive={p.sessionId === activeSid} isMyTurn={isMyTurn} />
+            ))}
+         </div>
       </div>
 
-      {/* ═══ OPPONENTS — each with their own ask buttons ═══ */}
-      <div className="flex-none flex flex-wrap items-start justify-center gap-2 sm:gap-4 md:gap-6 px-2 sm:px-4 py-2 z-30 max-h-[25vh] overflow-y-auto custom-scroll">
-        {opponents.map((p) => (
-          <div key={p.sessionId} className="transform scale-90 sm:scale-100">
-            <OpponentSeat player={p} isActive={p.sessionId === activeSid} isMyTurn={isMyTurn} />
-          </div>
-        ))}
-      </div>
+      <TableSurface cards={tableCards} />
 
-      {/* ═══ TABLE ═══ */}
-      <div className="flex-1 min-h-0 flex items-center justify-center z-10 p-2 sm:p-4 overflow-auto custom-scroll">
-        <div className="relative rounded-2xl transition-all duration-500"
-          style={{
-            ...tableDimensions,
-            background: "radial-gradient(ellipse at 50% 50%, #0f6b55 0%, #0b4f3e 30%, #083d2f 55%, #052a20 80%, #031a14 100%)",
-            boxShadow: "inset 0 0 50px rgba(0,0,0,0.4), inset 0 0 15px rgba(0,0,0,0.3), 0 6px 30px rgba(0,0,0,0.5)",
-            border: "clamp(2px, 0.5vw, 5px) solid #1a0e08",
-            outline: "clamp(1px, 0.2vw, 2px) solid #2a1a0f",
-          }}>
-          <div className="absolute inset-0 rounded-2xl opacity-[0.03] pointer-events-none overflow-hidden"
-            style={{ backgroundImage: "radial-gradient(circle, #fff 0.4px, transparent 0.4px)", backgroundSize: "6px 6px" }} />
-          <div className="absolute inset-[10px] rounded-xl border border-amber-600/10 pointer-events-none" />
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.025]">
-            <span className="text-3xl sm:text-4xl font-black tracking-[0.3em] text-white italic">TRIO</span>
-          </div>
-
-          {/* Cards */}
-          <div className="flex items-center justify-center w-full h-full p-4">
-            <div className="grid place-items-center justify-center content-center w-full"
-              style={{ 
-                gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`, 
-                gap: "12px",
-                maxWidth: "100%"
-              }}>
-              {visibleCards.map((card, i) => {
-                const origIdx = tableCards.findIndex(c => c.id === card.id);
-                return (
-                  <motion.div key={card.id} initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: i * 0.015, type: "spring", stiffness: 200, damping: 18 }}
-                    className="w-full flex justify-center items-center"
-                  >
-                    <div className="transform scale-90 sm:scale-100">
-                      <Card cardData={card} index={origIdx} location="table" />
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ═══ STATUS BAR (no action buttons — actions are on opponents) ═══ */}
-      <div className="flex-none h-8 flex items-center justify-center z-40">
-        {isMyTurn && phase === "playing" ? (
-          <span className="text-[10px] font-bold text-emerald-400/60">Sua vez — peça cartas dos oponentes ou clique na mesa</span>
-        ) : phase === "playing" ? (
-          <span className="text-[10px] font-bold text-white/20 tracking-wider uppercase">Aguardando {activeName}...</span>
-        ) : null}
-      </div>
-
-      {/* ═══ MY HAND ═══ */}
-      <div className="flex-none z-40 border-t border-white/5 bg-gradient-to-t from-black/60 to-[#1a0e08]/80">
-        <div className="px-4 pt-1.5 pb-2.5">
-          <div className="flex items-center justify-center gap-3 mb-1.5">
-            <div className="flex items-center gap-1.5">
-              <div className="h-px w-4 bg-white/10" />
-              <span className="text-[8px] font-bold tracking-[0.15em] text-white/20 uppercase">Sua Mão</span>
-              <div className="h-px w-4 bg-white/10" />
-            </div>
-            {myPlayer?.trios?.length > 0 && (
-              <div className="flex items-center gap-1.5 ml-1">
-                {myPlayer.trios.map((t, i) => (
-                  <motion.div key={i} initial={{ scale: 0 }} animate={{ scale: 1 }}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/10 border border-amber-400/25">
-                    <div className="w-5 h-[30px] rounded-sm overflow-hidden">
-                      <Image src={`/cards/card_${t.value}.webp`} alt="" width={20} height={30} className="w-full h-full object-cover" />
-                    </div>
-                    <span className="text-[8px] font-black text-amber-400">×3</span>
-                  </motion.div>
-                ))}
-                <span className="text-[8px] text-amber-400/50 font-bold">{myPlayer.trios.length}/3</span>
-              </div>
-            )}
-          </div>
-          {myHand.length > 0 ? (
-            <div className="flex items-end justify-center">
-              {myHand.map((card, i) => {
-                const rot = getHandRot(i, myHand.length);
-                return (
-                  <motion.div key={card.id}
-                    animate={{ y: Math.abs(rot) * 0.3, rotate: rot }}
-                    whileHover={{ y: -14, scale: 1.1, zIndex: 50, rotate: 0 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                    style={{ marginLeft: i > 0 ? "-6px" : "0", zIndex: i }}
-                    className="flex-shrink-0">
-                    <div className="w-[52px] h-[78px] sm:w-[60px] sm:h-[90px] md:w-[68px] md:h-[102px] rounded-md overflow-hidden shadow-lg shadow-black/40 border border-white/10 hover:border-white/25 transition-colors relative">
-                      <Image src={`/cards/card_${card.value}.webp`} alt={`${card.value}`} fill sizes="68px" className="object-cover" />
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-3"><span className="text-[9px] text-white/15">Sem cartas</span></div>
-          )}
-        </div>
-      </div>
-
-      {/* Turn glow */}
-      {isMyTurn && (
-        <motion.div animate={{ opacity: [0.15, 0.5, 0.15] }} transition={{ duration: 2, repeat: Infinity }}
-          className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent z-50" />
+      {players[mySid] && (
+         <PlayerArea player={players[mySid]} isMyTurn={isMyTurn} />
       )}
 
-      {/* ═══ GAME OVER ═══ */}
+      {/* Global Turn Glow */}
       <AnimatePresence>
-        {phase === "finished" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center">
-            <motion.div initial={{ scale: 0.6, y: 30 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 150 }}
-              className="text-center p-8 rounded-2xl border border-amber-500/30 shadow-2xl max-w-sm mx-4"
-              style={{ background: "linear-gradient(135deg, #2d1a0a 0%, #1a1025 100%)" }}>
-              <motion.div animate={{ rotate: [0, -5, 5, -5, 0] }} transition={{ duration: 0.5, delay: 0.3 }} className="text-4xl mb-2">🏆</motion.div>
-              <h2 className="text-2xl font-black text-amber-400 mb-1">{activeSid === mySid ? "VOCÊ VENCEU!" : `${activeName} VENCEU!`}</h2>
-              <p className="text-xs text-white/30 mb-5">Partida encerrada</p>
-              <button onClick={() => colyseusService.leaveRoom()}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-black font-bold text-sm hover:from-emerald-400 hover:to-emerald-500 transition-all shadow-lg">
-                Voltar ao Lobby
-              </button>
-            </motion.div>
-          </motion.div>
+        {isMyTurn && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.08, 0] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="absolute inset-0 pointer-events-none ring-inset ring-[10px] ring-emerald-500/20 z-50 mix-blend-overlay"
+          />
         )}
       </AnimatePresence>
     </div>
   );
 });
+
 GameTable.displayName = "GameTable";
 export default GameTable;
-
-function getHandRot(i: number, total: number): number {
-  if (total <= 1) return 0;
-  return (i - (total - 1) / 2) * 1.5;
-}
-
-// 3D Table Background Card Shadows
-function TableCardShadows() {
-  // Use a fixed set of card values for the background
-  const cards = [2, 4, 7, 9, 11, 3, 6, 10];
-  
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none perspective-[1200px]">
-      {cards.map((val, i) => (
-        <motion.div
-          key={`shadow-${i}`}
-          initial={{ 
-            opacity: 0, 
-            y: "110vh", 
-            x: `${(i * 13) % 100}vw`,
-            rotateX: 45,
-            rotateY: i % 2 === 0 ? -15 : 15,
-            rotateZ: i * 20,
-            scale: 0.8 + (i % 3) * 0.2
-          }}
-          animate={{
-            y: "-20vh",
-            x: [`${(i * 13) % 100}vw`, `${((i * 13) + 10) % 100}vw`, `${(i * 13) % 100}vw`],
-            rotateX: [45, 55, 45],
-            rotateY: [i % 2 === 0 ? -15 : 15, 0, i % 2 === 0 ? -15 : 15],
-            rotateZ: [i * 20, i * 20 + 40, i * 20 + 80],
-            opacity: [0, 0.08, 0]
-          }}
-          transition={{
-            duration: 20 + i * 4,
-            repeat: Infinity,
-            delay: i * 1.5,
-            ease: "linear"
-          }}
-          className="absolute w-28 h-40 rounded-xl"
-          style={{ transformStyle: "preserve-3d" }}
-        >
-          <img 
-            src={`/cards/card_${val}.webp`} 
-            className="w-full h-full object-cover rounded-xl grayscale opacity-40 mix-blend-overlay" 
-            alt="" 
-          />
-        </motion.div>
-      ))}
-    </div>
-  );
-}

@@ -29,7 +29,7 @@ export default function CountdownScreen() {
               animate={{ width: `${progress}%` }}
             />
           </div>
-          <span className="text-[10px] font-black tracking-[0.3em] text-emerald-500/50 uppercase">
+          <span className="text-[10px] font-black font-display tracking-[0.3em] text-emerald-500/50 uppercase">
             Carregando Ativos... {Math.round(progress)}%
           </span>
         </div>
@@ -46,7 +46,7 @@ export default function CountdownScreen() {
           {countdown > 0 ? (
             <>
               <motion.span
-                className="text-[12rem] sm:text-[16rem] font-black text-emerald-400 leading-none
+                className="text-[12rem] sm:text-[16rem] font-black font-display text-emerald-400 leading-none
                   drop-shadow-[0_0_60px_rgba(52,211,153,0.5)]"
                 animate={{
                   textShadow: [
@@ -59,7 +59,7 @@ export default function CountdownScreen() {
               >
                 {countdown}
               </motion.span>
-              <p className="text-xs font-black tracking-[0.5em] text-white/30 uppercase mt-4">
+              <p className="text-xs font-black font-display tracking-[0.5em] text-white/30 uppercase mt-4">
                 PREPARE-SE
               </p>
             </>
@@ -67,7 +67,7 @@ export default function CountdownScreen() {
             <motion.span
               initial={{ scale: 0.5 }}
               animate={{ scale: [1, 1.2, 1] }}
-              className="text-6xl sm:text-8xl font-black text-amber-400
+              className="text-6xl sm:text-8xl font-black font-display text-amber-400
                 drop-shadow-[0_0_40px_rgba(251,191,36,0.6)]"
             >
               GO!

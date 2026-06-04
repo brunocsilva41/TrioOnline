@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { useGameStore } from "../../store/useGameStore";
+import { usePreloader } from "../AssetPreloader";
+import CardImage from "../CardImage";
 
 /**
  * Casino-style card dealing animation with actual card back images.
@@ -13,14 +14,16 @@ export default function DealingCinematic() {
   const handSize = useGameStore((s) => s.handSize);
   const tableCardCount = useGameStore((s) => s.tableCardCount);
   const [showCards, setShowCards] = useState(false);
+  const { isReady, progress } = usePreloader();
 
   const playerList = useMemo(() => Object.values(players), [players]);
   const totalCards = playerList.length * (handSize || 7) + (tableCardCount || 15);
 
   useEffect(() => {
-    const t = setTimeout(() => setShowCards(true), 600);
+    if (!isReady) return;
+    const t = setTimeout(() => setShowCards(true), 250);
     return () => clearTimeout(t);
-  }, []);
+  }, [isReady]);
 
   // Generate dealing card animations
   const dealCards = useMemo(() => {
@@ -69,6 +72,21 @@ export default function DealingCinematic() {
         </p>
       </motion.div>
 
+      {!isReady && (
+        <div className="absolute bottom-14 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center gap-2">
+          <div className="h-1 w-52 overflow-hidden rounded-full bg-white/10">
+            <motion.div
+              className="h-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.65)]"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-300/60">
+            Preparando cartas {Math.round(progress)}%
+          </span>
+        </div>
+      )}
+
       {/* Central deck stack */}
       <div className="relative z-10">
         {/* Stacked deck */}
@@ -81,11 +99,11 @@ export default function DealingCinematic() {
             className="absolute w-[68px] h-[102px] rounded-lg overflow-hidden shadow-xl"
             style={{ top: -i * 2, left: i * 1 }}
           >
-            <Image
+            <CardImage
               src="/cards/trio_back_card.webp"
               alt="deck"
-              fill
-              className="object-cover"
+              className="rounded-lg"
+              eager
             />
           </motion.div>
         ))}
@@ -114,11 +132,11 @@ export default function DealingCinematic() {
                 damping: 12,
               }}
             >
-              <Image
+              <CardImage
                 src="/cards/trio_back_card.webp"
                 alt="card"
-                fill
-                className="object-cover"
+                className="rounded-lg"
+                eager
               />
               {/* Motion blur effect */}
               <motion.div

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
+import { useEffect } from "react";
+import { motion } from "framer-motion";
+import CardImage from "../CardImage";
 
 interface TrioCinematicProps {
   playerName: string;
@@ -56,7 +56,7 @@ export default function TrioCinematic({ playerName, cardValue, onComplete }: Tri
           transition={{ duration: 0.6, type: "spring", stiffness: 100 }}
           className="absolute z-10 w-24 h-36 rounded-xl overflow-hidden shadow-2xl border-2 border-amber-400/50"
         >
-          <Image src={`/cards/card_${cardValue}.webp`} alt="" fill sizes="96px" className="object-cover" />
+          <CardImage value={cardValue} className="rounded-xl" eager />
         </motion.div>
 
         {/* Right Card */}
@@ -67,7 +67,7 @@ export default function TrioCinematic({ playerName, cardValue, onComplete }: Tri
           transition={{ duration: 0.6, delay: 0.1, type: "spring", stiffness: 100 }}
           className="absolute z-20 w-24 h-36 rounded-xl overflow-hidden shadow-2xl border-2 border-amber-400/50"
         >
-          <Image src={`/cards/card_${cardValue}.webp`} alt="" fill sizes="96px" className="object-cover" />
+          <CardImage value={cardValue} className="rounded-xl" eager />
         </motion.div>
 
         {/* Center Card */}
@@ -78,7 +78,7 @@ export default function TrioCinematic({ playerName, cardValue, onComplete }: Tri
           transition={{ duration: 0.6, delay: 0.3, type: "spring", stiffness: 150 }}
           className="absolute z-30 w-24 h-36 rounded-xl overflow-hidden shadow-[0_0_50px_rgba(251,191,36,0.6)] border-2 border-amber-300"
         >
-          <Image src={`/cards/card_${cardValue}.webp`} alt="" fill sizes="120px" className="object-cover" />
+          <CardImage value={cardValue} className="rounded-xl" eager />
           <motion.div
             animate={{ opacity: [0, 0.5, 0] }}
             transition={{ duration: 1, repeat: Infinity }}

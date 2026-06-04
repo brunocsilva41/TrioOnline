@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { colyseusService } from "../../networking/ColyseusService";
 import { useGameStore, RoomInfo } from "../../store/useGameStore";
 import AuthWidget from "./AuthWidget";
 import LeaderboardWidget from "./LeaderboardWidget";
+import CardImage from "../CardImage";
+import { useServerStatus } from "../../hooks/useServerStatus";
+import { Eye } from "lucide-react";
 
 export default function LobbyScreen() {
   const [view, setView] = useState<"main" | "create" | "join" | "browse">("main");
@@ -16,9 +19,12 @@ export default function LobbyScreen() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [guestName] = useState(() => `Guest_${Math.random().toString(36).slice(2, 6)}`);
+  const serverStatus = useServerStatus();
 
   const availableRooms = useGameStore((s) => s.availableRooms);
   const authUser = useGameStore((s) => s.authUser);
+  const isServerOnline = serverStatus.status === "online";
 
   // Load saved name on mount (client-only to avoid hydration mismatch)
   useEffect(() => {
@@ -43,17 +49,26 @@ export default function LobbyScreen() {
 
   // Poll rooms when browsing
   useEffect(() => {
-    if (view === "browse") {
+    if (view === "browse" && isServerOnline) {
       colyseusService.fetchRooms();
       const interval = setInterval(() => colyseusService.fetchRooms(), 3000);
       return () => clearInterval(interval);
     }
-  }, [view]);
+  }, [view, isServerOnline]);
 
-  const displayName = playerName || `Guest_${Math.random().toString(36).slice(2, 6)}`;
+  const isProcessing = useGameStore((s) => s.isProcessing);
+  const displayName = playerName || guestName;
   const userId = authUser ? authUser.id : undefined;
 
+  const assertServerOnline = () => {
+    if (isServerOnline) return true;
+    setError(`Servidor offline. Tente novamente em instantes.`);
+    void serverStatus.checkNow();
+    return false;
+  };
+
   const handleCreateRoom = async () => {
+    if (!assertServerOnline()) return;
     setError("");
     setLoading(true);
     try {
@@ -71,6 +86,7 @@ export default function LobbyScreen() {
 
   const handleJoinByCode = async () => {
     if (!joinCode.trim()) return;
+    if (!assertServerOnline()) return;
     setError("");
     setLoading(true);
     try {
@@ -82,6 +98,7 @@ export default function LobbyScreen() {
   };
 
   const handleJoinRoom = async (roomId: string) => {
+    if (!assertServerOnline()) return;
     setError("");
     setLoading(true);
     try {
@@ -92,7 +109,20 @@ export default function LobbyScreen() {
     setLoading(false);
   };
 
+  const handleObserveRoom = async (roomId: string) => {
+    if (!assertServerOnline()) return;
+    setError("");
+    setLoading(true);
+    try {
+      await colyseusService.observeRoom(roomId, { displayName, userId });
+    } catch (e: any) {
+      setError(e.message || "Failed to observe room");
+    }
+    setLoading(false);
+  };
+
   const handleQuickMatch = async () => {
+    if (!assertServerOnline()) return;
     setError("");
     setLoading(true);
     try {
@@ -108,10 +138,10 @@ export default function LobbyScreen() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.05, filter: "blur(20px)" }}
-      className="relative w-full min-h-[100dvh] h-full flex flex-col items-center justify-start sm:justify-center overflow-y-auto overflow-x-hidden pt-12 pb-24 sm:py-0"
+      className="relative w-full min-h-[100dvh] flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-8 pb-32 sm:py-12"
     >
       {/* Animated Background */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,_rgba(52,211,153,0.08)_0%,_transparent_60%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,_rgba(251,191,36,0.04)_0%,_transparent_40%)]" />
         <FloatingCardsLounge />
@@ -123,22 +153,19 @@ export default function LobbyScreen() {
         initial={{ y: -30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-        className="z-10 text-center mb-12 relative"
+        className="z-10 text-center mb-6 sm:mb-12 relative px-4"
       >
         <motion.div
           animate={{ opacity: [0.3, 0.6, 0.3] }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           className="absolute -inset-10 bg-emerald-500/10 blur-[60px] rounded-full -z-10"
         />
-        <h2 className="text-amber-500/80 font-black tracking-[0.6em] text-[10px] sm:text-xs mb-3 italic">
-          TRINITY_DECK_ENGINE_V3
-        </h2>
-        <h1 className="text-5xl sm:text-7xl font-black tracking-tighter flex items-center justify-center gap-1">
+        <h1 className="text-4xl sm:text-7xl font-black font-display tracking-tighter flex items-center justify-center gap-1">
           <motion.span 
             initial={{ rotateY: 90 }}
             animate={{ rotateY: 0 }}
             transition={{ delay: 0.5, duration: 0.8 }}
-            className="text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+            className="text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]"
           >
             TRIO
           </motion.span>
@@ -151,19 +178,22 @@ export default function LobbyScreen() {
               ]
             }}
             transition={{ duration: 3, repeat: Infinity }}
-            className="text-emerald-400 drop-shadow-[0_0_40px_rgba(52,211,153,0.4)]"
+            className="text-emerald-400 drop-shadow-[0_0_30px_rgba(52,211,153,0.4)]"
           >
             ONLINE
           </motion.span>
         </h1>
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <div className="h-px w-8 bg-gradient-to-r from-transparent to-white/10" />
-          <span className="text-[8px] font-mono text-white/20 tracking-[0.4em] uppercase">Multiplayer Experience</span>
-          <div className="h-px w-8 bg-gradient-to-l from-transparent to-white/10" />
+        <div className="flex items-center justify-center gap-2 mt-3 sm:mt-4">
+          <div className="h-px w-6 sm:w-8 bg-gradient-to-r from-transparent to-white/10" />
+          <span className="text-[7px] sm:text-[8px] font-mono text-white/20 tracking-[0.3em] sm:tracking-[0.4em] uppercase">Multiplayer Experience</span>
+          <div className="h-px w-6 sm:w-8 bg-gradient-to-l from-transparent to-white/10" />
         </div>
       </motion.div>
 
-      <LeaderboardWidget />
+      {/* Leaderboard - Relative on mobile, Fixed on Desktop (handled via classes in widget) */}
+      <div className="w-full max-w-md z-20">
+        <LeaderboardWidget />
+      </div>
 
       {/* Content Card */}
       <motion.div
@@ -175,10 +205,10 @@ export default function LobbyScreen() {
           stiffness: 100,
           damping: 20
         }}
-        className="z-10 w-full max-w-md px-6"
+        className="z-10 w-full max-w-lg px-4 sm:px-6"
       >
-        <div className="bg-slate-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-1 shadow-2xl overflow-hidden">
-          <div className="p-6">
+        <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-1.5 shadow-2xl overflow-hidden">
+          <div className="p-6 sm:p-10">
             <AnimatePresence mode="wait">
               {view === "main" && (
                 <motion.div
@@ -196,6 +226,8 @@ export default function LobbyScreen() {
                     onQuickMatch={handleQuickMatch}
                     loading={loading}
                     isLoggedIn={!!authUser}
+                    serverStatus={serverStatus.status}
+                    onRetryServer={serverStatus.checkNow}
                   />
                 </motion.div>
               )}
@@ -215,6 +247,7 @@ export default function LobbyScreen() {
                     onConfirm={handleCreateRoom}
                     onBack={() => setView("main")}
                     loading={loading}
+                    serverStatus={serverStatus.status}
                   />
                 </motion.div>
               )}
@@ -232,6 +265,7 @@ export default function LobbyScreen() {
                     onJoin={handleJoinByCode}
                     onBack={() => setView("main")}
                     loading={loading}
+                    serverStatus={serverStatus.status}
                   />
                 </motion.div>
               )}
@@ -246,8 +280,10 @@ export default function LobbyScreen() {
                   <BrowseRoomsPanel
                     rooms={availableRooms}
                     onJoin={handleJoinRoom}
+                    onObserve={handleObserveRoom}
                     onBack={() => setView("main")}
                     loading={loading}
+                    serverStatus={serverStatus.status}
                   />
                 </motion.div>
               )}
@@ -259,18 +295,12 @@ export default function LobbyScreen() {
           <motion.p
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-rose-400 text-[10px] text-center mt-4 font-bold tracking-widest uppercase"
+            className="text-rose-400 text-xs text-center mt-6 font-bold tracking-widest uppercase px-4"
           >
             ⚠️ {error}
           </motion.p>
         )}
       </motion.div>
-
-      {/* Footer & Widgets */}
-      <div className="absolute bottom-6 right-6 flex flex-col items-end text-right gap-1 text-[9px] font-mono tracking-widest text-white/20 z-10 pointer-events-none">
-        <span>TRINITY ENGINE v3.0</span>
-        <span>2-8 JOGADORES</span>
-      </div>
 
       <AuthWidget />
     </motion.div>
@@ -279,7 +309,7 @@ export default function LobbyScreen() {
 
 // === SUB-COMPONENTS ===
 
-function MainMenu({ playerName, onNameChange, onCreateRoom, onJoinCode, onBrowse, onQuickMatch, loading, isLoggedIn }: {
+function MainMenu({ playerName, onNameChange, onCreateRoom, onJoinCode, onBrowse, onQuickMatch, loading, isLoggedIn, serverStatus, onRetryServer }: {
   playerName: string;
   onNameChange: (v: string) => void;
   onCreateRoom: () => void;
@@ -288,6 +318,8 @@ function MainMenu({ playerName, onNameChange, onCreateRoom, onJoinCode, onBrowse
   onQuickMatch: () => void;
   loading: boolean;
   isLoggedIn: boolean;
+  serverStatus: string;
+  onRetryServer: () => void;
 }) {
   const container = {
     hidden: { opacity: 0 },
@@ -305,7 +337,24 @@ function MainMenu({ playerName, onNameChange, onCreateRoom, onJoinCode, onBrowse
   };
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
+      {serverStatus !== "online" && (
+        <motion.button
+          variants={item}
+          onClick={onRetryServer}
+          className="w-full rounded-[1.5rem] border border-amber-400/20 bg-amber-500/10 px-6 py-4 text-left transition-colors hover:bg-amber-500/15"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <span className="block text-xs font-black font-display uppercase tracking-[0.22em] text-amber-300">
+                {serverStatus === "checking" ? "Conectando ao servidor..." : "Servidor em espera"}
+              </span>
+            </div>
+            <span className="text-[10px] font-black font-display uppercase tracking-widest text-amber-200/80">Reconectar</span>
+          </div>
+        </motion.button>
+      )}
+
       {/* Name Input */}
       <motion.div variants={item} className="relative group">
         <input
@@ -315,15 +364,15 @@ function MainMenu({ playerName, onNameChange, onCreateRoom, onJoinCode, onBrowse
           placeholder="Seu apelido..."
           maxLength={16}
           disabled={isLoggedIn}
-          className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white text-sm
+          className="w-full bg-white/5 border border-white/15 rounded-[1.5rem] px-8 py-6 text-white text-lg
             placeholder:text-white/20 focus:outline-none focus:border-emerald-500/40 focus:bg-white/[0.08]
             transition-all duration-300 group-hover:bg-white/[0.06] disabled:opacity-50"
         />
-        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[9px] text-white/20 font-mono tracking-tighter">
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] text-white/20 font-mono tracking-tighter">
           NAME_ID: {playerName.length}/16
         </div>
         {!isLoggedIn && (
-          <div className="absolute -bottom-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity" />
+          <div className="absolute -bottom-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent opacity-0 group-focus-within:opacity-100 transition-opacity" />
         )}
       </motion.div>
 
@@ -331,17 +380,19 @@ function MainMenu({ playerName, onNameChange, onCreateRoom, onJoinCode, onBrowse
       <motion.div variants={item}>
         <motion.button
           onClick={onQuickMatch}
-          disabled={loading}
+          disabled={loading || serverStatus !== "online"}
           whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.98 }}
-          className="w-full py-5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 
-            rounded-2xl font-black text-black text-sm tracking-[0.2em] uppercase transition-all 
+          className="w-full py-7 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 
+            rounded-[1.5rem] font-black font-display text-black text-lg tracking-[0.2em] uppercase transition-all 
             disabled:opacity-50 disabled:cursor-not-allowed
-            shadow-[0_10px_40px_rgba(16,185,129,0.25)] hover:shadow-[0_15px_50px_rgba(16,185,129,0.4)]"
+            shadow-[0_15px_50px_rgba(16,185,129,0.3)] hover:shadow-[0_20px_60px_rgba(16,185,129,0.5)]"
         >
-          {loading ? (
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+          {serverStatus !== "online" ? (
+            "CONECTANDO..."
+          ) : loading ? (
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-6 h-6 border-3 border-black/20 border-t-black rounded-full animate-spin" />
               <span>BUSCANDO...</span>
             </div>
           ) : "PARTIDA RÁPIDA"}
@@ -349,7 +400,7 @@ function MainMenu({ playerName, onNameChange, onCreateRoom, onJoinCode, onBrowse
       </motion.div>
 
       {/* Action Buttons */}
-      <motion.div variants={item} className="grid grid-cols-3 gap-3">
+      <motion.div variants={item} className="grid grid-cols-3 gap-4">
         <LobbyButton onClick={onCreateRoom} label="CRIAR" sublabel="SALA" icon="+" />
         <LobbyButton onClick={onJoinCode} label="ENTRAR" sublabel="CÓDIGO" icon="#" />
         <LobbyButton onClick={onBrowse} label="BUSCAR" sublabel="LISTA" icon="☰" />
@@ -364,21 +415,21 @@ function LobbyButton({ onClick, label, sublabel, icon }: { onClick: () => void; 
       onClick={onClick}
       whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.08)" }}
       whileTap={{ scale: 0.95 }}
-      className="relative py-4 px-2 bg-white/[0.03] border border-white/5 hover:border-emerald-500/30
-        rounded-2xl transition-all duration-300 group overflow-hidden"
+      className="relative py-6 px-3 bg-white/[0.03] border border-white/10 hover:border-emerald-500/30
+        rounded-[1.5rem] transition-all duration-300 group overflow-hidden"
     >
-      <div className="absolute top-0 right-0 p-1 opacity-10 group-hover:opacity-20 transition-opacity">
-        <span className="text-xl font-black">{icon}</span>
+      <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+        <span className="text-2xl font-black font-display">{icon}</span>
       </div>
-      <span className="block text-[10px] font-black tracking-widest text-white group-hover:text-emerald-400 transition-colors uppercase">
+      <span className="block text-xs font-black font-display tracking-widest text-white group-hover:text-emerald-400 transition-colors uppercase">
         {label}
       </span>
-      <span className="block text-[8px] text-white/30 mt-0.5 font-mono">{sublabel}</span>
+      <span className="block text-[10px] text-white/30 mt-1 font-mono">{sublabel}</span>
     </motion.button>
   );
 }
 
-function CreateRoomPanel({ isPrivate, setIsPrivate, maxPlayers, setMaxPlayers, onConfirm, onBack, loading }: {
+function CreateRoomPanel({ isPrivate, setIsPrivate, maxPlayers, setMaxPlayers, onConfirm, onBack, loading, serverStatus }: {
   isPrivate: boolean;
   setIsPrivate: (v: boolean) => void;
   maxPlayers: number;
@@ -386,12 +437,13 @@ function CreateRoomPanel({ isPrivate, setIsPrivate, maxPlayers, setMaxPlayers, o
   onConfirm: () => void;
   onBack: () => void;
   loading: boolean;
+  serverStatus: string;
 }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-2">
         <div className="h-px flex-1 bg-white/10" />
-        <h3 className="text-[10px] font-black tracking-[0.3em] text-white/50 uppercase">Configurar Sala</h3>
+        <h3 className="text-[10px] font-black font-display tracking-[0.3em] text-white/50 uppercase">Configurar Sala</h3>
         <div className="h-px flex-1 bg-white/10" />
       </div>
 
@@ -414,14 +466,14 @@ function CreateRoomPanel({ isPrivate, setIsPrivate, maxPlayers, setMaxPlayers, o
       <div className="bg-white/[0.03] rounded-2xl px-5 py-4 border border-white/5">
         <div className="flex justify-between items-end mb-4">
           <span className="text-xs font-bold text-white">Máximo de Jogadores</span>
-          <span className="text-xl font-black text-emerald-400 leading-none">{maxPlayers}</span>
+          <span className="text-xl font-black font-display text-emerald-400 leading-none">{maxPlayers}</span>
         </div>
         <div className="flex gap-1.5">
           {[2, 3, 4, 5, 6, 7, 8].map((n) => (
             <button
               key={n}
               onClick={() => setMaxPlayers(n)}
-              className={`flex-1 py-2.5 rounded-xl text-[10px] font-black transition-all duration-200 ${
+              className={`flex-1 py-2.5 rounded-xl text-[10px] font-black font-display transition-all duration-200 ${
                 maxPlayers === n
                   ? 'bg-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]'
                   : 'bg-white/5 text-white/40 hover:bg-white/10'
@@ -438,35 +490,36 @@ function CreateRoomPanel({ isPrivate, setIsPrivate, maxPlayers, setMaxPlayers, o
           onClick={onBack}
           whileHover={{ backgroundColor: "rgba(255,255,255,0.08)" }}
           whileTap={{ scale: 0.95 }}
-          className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-white/50 tracking-widest transition-colors uppercase"
+          className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black font-display text-white/50 tracking-widest transition-colors uppercase"
         >
           Voltar
         </motion.button>
         <motion.button
           onClick={onConfirm}
-          disabled={loading}
+          disabled={loading || serverStatus !== "online"}
           whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.98 }}
-          className="flex-[2] py-4 bg-emerald-500 hover:bg-emerald-400 rounded-2xl font-black text-black text-[10px]
+          className="flex-[2] py-4 bg-emerald-500 hover:bg-emerald-400 rounded-2xl font-black font-display text-black text-[10px]
             tracking-[0.2em] uppercase transition-all disabled:opacity-50 shadow-[0_10px_30px_rgba(16,185,129,0.2)]"
         >
-          {loading ? "CRIANDO..." : "CONFIRMAR"}
+          {serverStatus !== "online" ? "AGUARDE..." : loading ? "CRIANDO..." : "CONFIRMAR"}
         </motion.button>
       </div>
     </div>
   );
 }
 
-function JoinByCodePanel({ code, setCode, onJoin, onBack, loading }: {
+function JoinByCodePanel({ code, setCode, onJoin, onBack, loading, serverStatus }: {
   code: string;
   setCode: (v: string) => void;
   onJoin: () => void;
   onBack: () => void;
   loading: boolean;
+  serverStatus: string;
 }) {
   return (
     <div className="space-y-5">
-      <h3 className="text-sm font-black tracking-wider text-center text-white/70 uppercase">Entrar por Código</h3>
+      <h3 className="text-sm font-black font-display tracking-wider text-center text-white/70 uppercase">Entrar por Código</h3>
 
       <input
         type="text"
@@ -475,7 +528,7 @@ function JoinByCodePanel({ code, setCode, onJoin, onBack, loading }: {
         placeholder="CÓDIGO"
         maxLength={6}
         className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white text-center text-2xl
-          font-black tracking-[0.5em] placeholder:text-white/20 placeholder:text-sm placeholder:tracking-wider
+          font-black font-display tracking-[0.5em] placeholder:text-white/20 placeholder:text-sm placeholder:tracking-wider
           focus:outline-none focus:border-amber-500/50 transition-all"
       />
 
@@ -489,74 +542,132 @@ function JoinByCodePanel({ code, setCode, onJoin, onBack, loading }: {
         </motion.button>
         <motion.button
           onClick={onJoin}
-          disabled={loading || code.length < 4}
+          disabled={loading || code.length < 4 || serverStatus !== "online"}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="flex-[2] py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-black text-black text-xs
+          className="flex-[2] py-3 bg-amber-500 hover:bg-amber-400 rounded-xl font-black font-display text-black text-xs
             tracking-wider uppercase transition-colors disabled:opacity-50 shadow-[0_0_20px_rgba(251,191,36,0.3)]"
         >
-          {loading ? "ENTRANDO..." : "ENTRAR"}
+          {serverStatus !== "online" ? "OFFLINE" : loading ? "ENTRANDO..." : "ENTRAR"}
         </motion.button>
       </div>
     </div>
   );
 }
 
-function BrowseRoomsPanel({ rooms, onJoin, onBack, loading }: {
+function BrowseRoomsPanel({ rooms, onJoin, onObserve, onBack, loading, serverStatus }: {
   rooms: RoomInfo[];
   onJoin: (roomId: string) => void;
+  onObserve: (roomId: string) => void;
   onBack: () => void;
   loading: boolean;
+  serverStatus: string;
 }) {
+  // Separate rooms into waiting and ongoing
+  const waitingRooms = rooms.filter(r => r.status === "waiting");
+  const ongoingRooms = rooms.filter(r => r.status !== "waiting");
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 mb-2">
         <div className="h-px flex-1 bg-white/10" />
-        <h3 className="text-[10px] font-black tracking-[0.3em] text-white/50 uppercase">Salas Públicas</h3>
+        <h3 className="text-[10px] font-black font-display tracking-[0.3em] text-white/50 uppercase">Salas Públicas</h3>
         <div className="h-px flex-1 bg-white/10" />
       </div>
 
-      <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scroll">
-        {rooms.length === 0 ? (
+      <div className="space-y-4 max-h-64 overflow-y-auto pr-2 custom-scroll">
+        {serverStatus !== "online" ? (
+          <div className="text-center py-12 bg-amber-500/[0.06] border border-amber-400/10 rounded-2xl">
+            <span className="text-3xl opacity-40 mb-2 block">📡</span>
+            <p className="text-xs font-bold text-amber-200/70 uppercase tracking-widest">Sincronizando...</p>
+            <p className="text-[9px] text-white/25 mt-1">Buscando salas disponíveis.</p>
+          </div>
+        ) : rooms.length === 0 ? (
           <div className="text-center py-12 bg-white/[0.02] border border-white/5 rounded-2xl">
             <span className="text-3xl opacity-30 mb-2 block">📡</span>
             <p className="text-xs font-bold text-white/40 uppercase tracking-widest">Nenhuma sala ativa</p>
             <p className="text-[9px] text-white/20 mt-1">Crie a sua e convide amigos!</p>
           </div>
         ) : (
-          rooms.map((room, i) => (
-            <motion.button
-              key={room.roomId}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.05 }}
-              onClick={() => onJoin(room.roomId)}
-              disabled={loading || room.status !== "waiting"}
-              whileHover={{ scale: 1.02, backgroundColor: "rgba(16,185,129,0.1)", borderColor: "rgba(16,185,129,0.3)" }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full flex items-center justify-between bg-white/[0.03] border border-white/5
-                rounded-2xl px-5 py-4 transition-all disabled:opacity-40 group relative overflow-hidden"
-            >
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="text-left">
-                <p className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors uppercase tracking-wider">
-                  <span className="text-amber-500 mr-2 font-mono">[{room.roomCode}]</span>
-                  {room.hostName}&apos;S MATCH
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`w-1.5 h-1.5 rounded-full ${room.status === "waiting" ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`} />
-                  <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest">{room.status === "waiting" ? "Aguardando" : "Em Jogo"}</p>
-                </div>
+          <>
+            {/* Waiting Rooms */}
+            {waitingRooms.length > 0 && (
+              <div className="space-y-2">
+                {waitingRooms.map((room, i) => (
+                  <motion.button
+                    key={room.roomId}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    onClick={() => onJoin(room.roomId)}
+                    disabled={loading}
+                    whileHover={{ scale: 1.02, backgroundColor: "rgba(16,185,129,0.1)", borderColor: "rgba(16,185,129,0.3)" }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full flex items-center justify-between bg-white/[0.03] border border-white/5
+                      rounded-2xl px-5 py-4 transition-all disabled:opacity-40 group relative overflow-hidden"
+                  >
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="text-left">
+                      <p className="text-sm font-black font-display text-white group-hover:text-emerald-400 transition-colors uppercase tracking-wider">
+                        <span className="text-amber-500 mr-2 font-mono">[{room.roomCode}]</span>
+                        {room.hostName}&apos;S MATCH
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Aguardando</p>
+                      </div>
+                    </div>
+                    <div className="text-right flex flex-col items-end">
+                      <div className="flex items-end gap-1">
+                        <span className="text-xl font-black font-display text-emerald-400 leading-none">{room.playerCount}</span>
+                        <span className="text-[10px] text-white/30 font-bold mb-0.5">/{room.maxPlayers}</span>
+                      </div>
+                    </div>
+                  </motion.button>
+                ))}
               </div>
-              <div className="text-right flex flex-col items-end">
-                <div className="flex items-end gap-1">
-                  <span className="text-xl font-black text-emerald-400 leading-none">{room.playerCount}</span>
-                  <span className="text-[10px] text-white/30 font-bold mb-0.5">/{room.maxPlayers}</span>
+            )}
+
+            {/* Ongoing Rooms */}
+            {ongoingRooms.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 py-1">
+                  <span className="text-[8px] font-black font-display text-amber-500/50 uppercase tracking-[0.2em]">Partidas em Andamento</span>
+                  <div className="h-px flex-1 bg-amber-500/10" />
                 </div>
-                <p className="text-[8px] text-white/20 font-mono tracking-widest mt-1">JOGADORES</p>
+                {ongoingRooms.map((room, i) => (
+                  <div
+                    key={room.roomId}
+                    className="w-full flex items-center justify-between bg-amber-500/[0.02] border border-amber-500/10
+                      rounded-2xl px-5 py-4 group relative overflow-hidden"
+                  >
+                    <div className="text-left">
+                      <p className="text-sm font-black font-display text-white/80 uppercase tracking-wider">
+                        <span className="text-amber-500/60 mr-2 font-mono">[{room.roomCode}]</span>
+                        {room.hostName}&apos;S MATCH
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                        <p className="text-[9px] font-mono text-amber-400/60 uppercase tracking-widest">Em Jogo</p>
+                      </div>
+                    </div>
+                    
+                    <motion.button
+                      onClick={() => onObserve(room.roomId)}
+                      disabled={loading}
+                      whileHover={{ scale: 1.05, backgroundColor: "rgba(251,191,36,0.15)" }}
+                      whileTap={{ scale: 0.95 }}
+                      className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl
+                        text-amber-400 text-[9px] font-black font-display uppercase tracking-wider transition-colors"
+                    >
+                      <Eye size={12} />
+                      Observar
+                    </motion.button>
+                  </div>
+                ))}
               </div>
-            </motion.button>
-          ))
+            )}
+          </>
         )}
       </div>
 
@@ -565,7 +676,7 @@ function BrowseRoomsPanel({ rooms, onJoin, onBack, loading }: {
           onClick={onBack}
           whileHover={{ backgroundColor: "rgba(255,255,255,0.08)" }}
           whileTap={{ scale: 0.95 }}
-          className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-white/50 tracking-widest transition-colors uppercase"
+          className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black font-display text-white/50 tracking-widest transition-colors uppercase"
         >
           Voltar
         </motion.button>
@@ -623,7 +734,7 @@ function ParticleField() {
 
 // 3D Lounge Floating Cards
 function FloatingCardsLounge() {
-  const cards = [1, 5, 8, 12, "back"];
+  const cards = [1, 5, 8, 12, "back"] as const;
   
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none perspective-[1000px]">
@@ -655,10 +766,11 @@ function FloatingCardsLounge() {
           className="absolute w-24 h-36 rounded-xl shadow-2xl"
           style={{ transformStyle: "preserve-3d" }}
         >
-          <img 
-            src={val === "back" ? "/cards/trio_back_card.webp" : `/cards/card_${val}.webp`} 
-            className="w-full h-full object-cover rounded-xl opacity-60" 
-            alt="" 
+          <CardImage
+            value={typeof val === "number" ? val : undefined}
+            src={val === "back" ? "/cards/trio_back_card.webp" : undefined}
+            className="rounded-xl opacity-60"
+            eager={false}
           />
         </motion.div>
       ))}

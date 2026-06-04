@@ -2,9 +2,9 @@
 
 import React, { memo, forwardRef } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { CardData, useGameStore } from "../store/useGameStore";
 import { colyseusService } from "../networking/ColyseusService";
+import CardImage from "./CardImage";
 
 interface CardProps {
   cardData: CardData;
@@ -26,40 +26,37 @@ const Card = memo(forwardRef<HTMLDivElement, CardProps>(({ cardData, index, loca
   const mySessionId = useGameStore((s) => s.mySessionId);
   const targetedCardId = useGameStore((s) => s.targetedCardId);
 
+  const isProcessing = useGameStore((s) => s.isProcessing);
   const isMyTurn = activePlayerSessionId === mySessionId;
   const isRevealed = cardData.isRevealed;
   const isTargeted = targetedCardId === cardData.id;
-  const canInteract = location === "table" && isMyTurn && !isRevealed;
+  const canInteract = location === "table" && isMyTurn && !isRevealed && !isProcessing;
   const showFront = isRevealed || location === "hand";
 
   const handleClick = () => {
-    if (!canInteract) return;
+    if (!canInteract || isProcessing) return;
     colyseusService.sendRevealTableCard(index);
   };
 
-  // Table cards use clamp for responsive sizing; hand cards managed by parent
-  const sizeStyle = location === "table"
-    ? { width: "clamp(50px, 4vw, 72px)", height: "clamp(75px, 6vw, 108px)" }
-    : undefined;
-  const sizeClass = location === "hand"
-    ? "w-[52px] h-[78px] sm:w-[60px] sm:h-[90px] md:w-[68px] md:h-[102px]"
-    : "";
+  // Let the parent container control the size for true responsiveness
+  // The parent should ensure an aspect ratio of approx 2/3
+  const sizeClass = "w-full h-full";
 
   return (
     <motion.div
       ref={ref}
       onClick={handleClick}
       whileHover={canInteract ? {
-        scale: 1.12,
-        y: -8,
+        scale: 1.08,
+        y: -4,
         rotateZ: 1,
         transition: { type: "spring", stiffness: 300, damping: 20 }
-      } : (location === "hand" ? { y: -12, scale: 1.08 } : {})}
+      } : (location === "hand" ? { y: -12, scale: 1.05 } : {})}
       whileTap={canInteract ? { scale: 0.95 } : {}}
       className={`relative ${sizeClass} select-none flex-shrink-0
         ${canInteract ? "cursor-pointer" : "cursor-default"}
       `}
-      style={{ perspective: "800px", ...sizeStyle }}
+      style={{ perspective: "800px" }}
     >
       {/* 3D Flip Container */}
       <motion.div
@@ -74,13 +71,11 @@ const Card = memo(forwardRef<HTMLDivElement, CardProps>(({ cardData, index, loca
           style={{ backfaceVisibility: "hidden" }}
         >
           {cardData.value > 0 && (
-            <Image
-              src={`/cards/card_${cardData.value}.webp`}
+            <CardImage
+              value={cardData.value}
               alt={`Card ${cardData.value}`}
-              fill
-              sizes="100px"
-              className="object-cover rounded-lg"
-              priority={location === "hand"}
+              className="rounded-lg"
+              eager
             />
           )}
           {/* Glow on reveal */}
@@ -103,12 +98,11 @@ const Card = memo(forwardRef<HTMLDivElement, CardProps>(({ cardData, index, loca
           className="absolute inset-0 rounded-lg overflow-hidden shadow-lg"
           style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
         >
-          <Image
+          <CardImage
             src="/cards/trio_back_card.webp"
             alt="Card back"
-            fill
-            sizes="100px"
-            className="object-cover rounded-lg"
+            className="rounded-lg"
+            eager
           />
           {/* Interactive glow pulse */}
           {canInteract && (

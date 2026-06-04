@@ -52,11 +52,19 @@ export interface RoomInfo {
 export interface UserProfile {
   id: string;
   username: string;
+  avatar_url?: string;
   total_matches: number;
   total_wins: number;
   total_trios: number;
   total_playtime_seconds: number;
   created_at: string;
+}
+
+export interface ChatMessage {
+  sessionId: string;
+  displayName: string;
+  text: string;
+  ts: number;
 }
 
 interface GameStoreState {
@@ -74,6 +82,10 @@ interface GameStoreState {
   hostSessionId: string;
   mySessionId: string;
   countdown: number;
+
+  // === CHAT ===
+  chatMessages: ChatMessage[];
+  addChatMessage: (msg: ChatMessage) => void;
 
   // === GAME STATE (Atomic fields - EC-002) ===
   activePlayerSessionId: string | null;
@@ -95,11 +107,13 @@ interface GameStoreState {
   availableRooms: RoomInfo[];
 
   // === UX FLAGS (EC-004) ===
+  isProcessing: boolean;
   isThermalThrottled: boolean;
   isTensionActive: boolean;
   targetedCardId: number | null;
 
   // === SETTERS ===
+  setProcessing: (v: boolean) => void;
   setPhase: (phase: AppPhase) => void;
   setMySessionId: (id: string) => void;
   setRoomInfo: (info: { roomCode: string; isPrivate: boolean; maxPlayers: number; hostSessionId: string }) => void;
@@ -132,11 +146,14 @@ interface GameStoreState {
   nudgeEvent: { from: string, to: string, ts: number } | null;
   emoteEvent: { sessionId: string, emote: string, ts: number } | null;
   trioCinematicEvent: { sid: string, value: number, playerName: string, ts: number } | null;
+  cardRequestEvent: { fromSid: string, toSid: string, position: "lowest" | "highest", cardValue: number, ts: number } | null;
   
   triggerNudge: (from: string, to: string) => void;
   triggerEmote: (sessionId: string, emote: string) => void;
   triggerTrioCinematic: (sid: string, value: number, playerName: string) => void;
+  triggerCardRequest: (fromSid: string, toSid: string, position: "lowest" | "highest", cardValue: number) => void;
   clearTrioCinematic: () => void;
+  clearCardRequest: () => void;
 
   // Reset
   resetGame: () => void;
@@ -151,6 +168,7 @@ const initialState = {
   hostSessionId: "",
   mySessionId: "",
   countdown: 0,
+  chatMessages: [] as ChatMessage[],
   activePlayerSessionId: null,
   currentTick: 0,
   expirationTick: 0,
@@ -164,6 +182,7 @@ const initialState = {
   myHand: [] as CardData[],
   actionLogWindow: [] as string[],
   availableRooms: [] as RoomInfo[],
+  isProcessing: false,
   isThermalThrottled: false,
   isTensionActive: false,
   targetedCardId: null as number | null,
@@ -176,10 +195,14 @@ export const useGameStore = create<GameStoreState>((set) => ({
   ...initialState,
 
   setAuthUser: (u) => set({ authUser: u }),
+  setProcessing: (isProcessing) => set({ isProcessing }),
   setPhase: (phase) => set({ phase }),
   setMySessionId: (mySessionId) => set({ mySessionId }),
   setRoomInfo: (info) => set(info),
   setCountdown: (countdown) => set({ countdown }),
+  addChatMessage: (msg) => set((state) => ({
+    chatMessages: [...state.chatMessages.slice(-49), msg]
+  })),
   setActivePlayer: (activePlayerSessionId) => set({ activePlayerSessionId }),
   setTickData: (currentTick, expirationTick) => set({ currentTick, expirationTick }),
   setMatchMeta: (matchSeed, round, tableCardCount, handSize) =>
@@ -223,10 +246,14 @@ export const useGameStore = create<GameStoreState>((set) => ({
     actionLogWindow: [...state.actionLogWindow.slice(-9), log]
   })),
 
+  cardRequestEvent: null,
+
   triggerNudge: (from, to) => set({ nudgeEvent: { from, to, ts: Date.now() } }),
   triggerEmote: (sessionId, emote) => set({ emoteEvent: { sessionId, emote, ts: Date.now() } }),
   triggerTrioCinematic: (sid, value, playerName) => set({ trioCinematicEvent: { sid, value, playerName, ts: Date.now() } }),
+  triggerCardRequest: (fromSid, toSid, position, cardValue) => set({ cardRequestEvent: { fromSid, toSid, position, cardValue, ts: Date.now() } }),
   clearTrioCinematic: () => set({ trioCinematicEvent: null }),
+  clearCardRequest: () => set({ cardRequestEvent: null }),
 
   // Full reset
   resetGame: () => set(initialState),

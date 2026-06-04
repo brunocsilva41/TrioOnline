@@ -9,6 +9,7 @@ import RoomScreen from "../components/room/RoomScreen";
 import CountdownScreen from "../components/room/CountdownScreen";
 import DealingCinematic from "../components/game/DealingCinematic";
 import GameTable from "../components/GameTable";
+import GameOverScreen from "../components/game/GameOverScreen";
 
 export default function Home() {
   const phase = useGameStore((s) => s.phase);
@@ -49,7 +50,13 @@ export default function Home() {
         {phase === "room" && <RoomScreen key="room" />}
         {phase === "countdown" && <CountdownScreen key="countdown" />}
         {phase === "dealing" && <DealingCinematic key="dealing" />}
-        {(phase === "playing" || phase === "finished") && <GameTable key="game" />}
+        {phase === "playing" && <GameTable key="game" />}
+        {phase === "finished" && (
+          <>
+            <GameTable key="game-bg" />
+            <GameOverScreen key="game-over" />
+          </>
+        )}
       </AnimatePresence>
 
       {/* ── Reconnect Dialog ── */}
@@ -68,7 +75,7 @@ export default function Home() {
               className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center"
             >
               <div className="text-3xl mb-3">🎮</div>
-              <h2 className="text-lg font-bold text-white mb-1">Partida em andamento</h2>
+              <h2 className="text-lg font-black font-display text-white mb-1">Partida em andamento</h2>
               <p className="text-xs text-white/40 mb-5">
                 Você estava em uma partida. Deseja voltar ao jogo?
               </p>

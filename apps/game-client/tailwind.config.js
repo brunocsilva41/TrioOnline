@@ -6,6 +6,10 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-poppins)", "sans-serif"],
+        display: ["var(--font-kanit)", "sans-serif"],
+      },
       colors: {
         trinity: {
           dark: "#020617",

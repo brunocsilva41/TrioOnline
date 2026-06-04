@@ -3,6 +3,7 @@
 import { forwardRef } from "react";
 import { motion } from "framer-motion";
 import { PlayerData } from "../../store/useGameStore";
+import PlayerAvatar from "../PlayerAvatar";
 
 interface Props {
   player: PlayerData;
@@ -12,7 +13,6 @@ interface Props {
 }
 
 const PlayerSlot = forwardRef<HTMLDivElement, Props>(function PlayerSlot({ player, isMe, isHost, onKick }, ref) {
-  const initial = player.displayName?.charAt(0)?.toUpperCase() || "?";
   const isPlayerHost = player.isHost;
 
   return (
@@ -32,7 +32,7 @@ const PlayerSlot = forwardRef<HTMLDivElement, Props>(function PlayerSlot({ playe
         <motion.div
           initial={{ y: -10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="absolute top-2 left-2"
+          className="absolute top-2 left-2 z-10"
         >
           <span className="text-amber-400 text-sm">&#9813;</span>
         </motion.div>
@@ -43,32 +43,20 @@ const PlayerSlot = forwardRef<HTMLDivElement, Props>(function PlayerSlot({ playe
         <button
           onClick={onKick}
           className="absolute top-2 right-2 w-5 h-5 rounded-full bg-rose-500/0 hover:bg-rose-500/20
-            flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+            flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-10"
         >
           <span className="text-rose-400 text-[10px] font-bold">X</span>
         </button>
       )}
 
       {/* Avatar */}
-      <motion.div
-        animate={player.isOnline ? {
-          scale: [1, 1.02, 1],
-        } : {}}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        className={`relative w-14 h-14 rounded-full flex items-center justify-center mb-3
-          ${player.isOnline ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/10' : 'bg-white/5 grayscale'}
-          ${player.isReady ? 'ring-2 ring-emerald-400/50' : 'ring-1 ring-white/10'}
-        `}
-      >
-        <span className={`text-xl font-black ${player.isOnline ? 'text-emerald-300' : 'text-white/30'}`}>
-          {initial}
-        </span>
-
-        {/* Online indicator */}
-        <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#020617]
-          ${player.isOnline ? (player.isAfk ? 'bg-amber-400' : 'bg-emerald-400') : 'bg-rose-400'}
-        `} />
-      </motion.div>
+      <div className="mb-2">
+        <PlayerAvatar 
+          sessionId={player.sessionId} 
+          showName={false} 
+          size="md"
+        />
+      </div>
 
       {/* Name */}
       <p className={`text-[11px] font-bold truncate max-w-full ${isMe ? 'text-emerald-300' : 'text-white/80'}`}>
@@ -85,7 +73,7 @@ const PlayerSlot = forwardRef<HTMLDivElement, Props>(function PlayerSlot({ playe
         }}
         className="mt-2"
       >
-        <span className={`text-[9px] font-black tracking-wider uppercase
+        <span className={`text-[9px] font-black font-display tracking-wider uppercase
           ${player.isReady ? 'text-emerald-400' : 'text-white/30'}
         `}>
           {isPlayerHost ? "HOST" : player.isReady ? "PRONTO" : "AGUARDANDO"}
