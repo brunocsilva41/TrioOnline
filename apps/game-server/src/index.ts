@@ -2,29 +2,81 @@ import http from "http";
 import express from "express";
 import cors from "cors";
 import crypto from "crypto";
-import { PrismaClient } from "@prisma/client";
+import path from "path";
 import { Server, matchMaker } from "colyseus";
 import { WebSocketTransport } from "@colyseus/ws-transport";
+import { prisma, databaseConfigured } from "./db";
 import { TrioRoom } from "./rooms/TrioRoom";
+
+// Fatal error handlers
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("[Fatal] Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+    console.error("[Fatal] Uncaught Exception:", error);
+    // Give some time for logs to be sent
+    setTimeout(() => process.exit(1), 1000);
+});
 
 const port = Number(process.env.PORT || 2567);
 const app = express();
-const prisma = new PrismaClient();
+
+function logDatabaseError(scope: string, error: unknown) {
+    const message = error instanceof Error ? error.message.split("\n")[0] : String(error);
+
+    if (!databaseConfigured) {
+        console.warn(`[${scope}] DATABASE_URL ausente. Recursos de perfil/ranking ficam desativados no modo local.`);
+        return;
+    }
+
+    console.warn(`[${scope}] Banco indisponível: ${message}`);
+}
+
+function requireDatabase(res: express.Response) {
+    if (databaseConfigured) return true;
+    res.status(503).json({
+        error: "Database unavailable",
+        message: "Configure DATABASE_URL ou crie um .env local a partir de .env.example.",
+    });
+    return false;
+}
 
 // Simple hash for password
 const hashPassword = (password: string) => {
     return crypto.createHash("sha256").update(password).digest("hex");
 };
 
-// CORS must be the very first middleware — allows all origins
-app.use(cors());
+// CORS Configuration - Be extremely permissive for Render deployment
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow all origins
+        callback(null, true);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
+}));
+
 app.options("*", cors()); // Handle all OPTIONS preflight requests
 
 app.use(express.json());
 
+// Request logging
+app.use((req, res, next) => {
+    console.log(`[Trinity] ${req.method} ${req.url} - ${req.ip}`);
+    next();
+});
+
+// Add a root endpoint for basic health check
+app.get("/", (req, res) => {
+    res.json({ message: "Trinity Game Server is running", timestamp: new Date().toISOString() });
+});
+
 // === AUTH & PROFILE ROUTES ===
 
 app.post("/api/register", async (req, res) => {
+    if (!requireDatabase(res)) return;
     try {
         const { username, email, password } = req.body;
         if (!username || !password) return res.status(400).json({ error: "Username and password required" });
@@ -49,12 +101,13 @@ app.post("/api/register", async (req, res) => {
         
         res.json({ id: user.id, username: user.username, total_matches: user.total_matches, total_wins: user.total_wins, total_trios: user.total_trios, total_playtime_seconds: user.total_playtime_seconds, created_at: user.created_at });
     } catch (e) {
-        console.error("[Auth] Register error:", e);
+        logDatabaseError("Auth Register", e);
         res.status(500).json({ error: "Server error during registration" });
     }
 });
 
 app.post("/api/login", async (req, res) => {
+    if (!requireDatabase(res)) return;
     try {
         const { login, password } = req.body; // login can be email or username
         if (!login || !password) return res.status(400).json({ error: "Login and password required" });
@@ -73,12 +126,16 @@ app.post("/api/login", async (req, res) => {
         
         res.json({ id: user.id, username: user.username, total_matches: user.total_matches, total_wins: user.total_wins, total_trios: user.total_trios, total_playtime_seconds: user.total_playtime_seconds, created_at: user.created_at });
     } catch (e) {
-        console.error("[Auth] Login error:", e);
+        logDatabaseError("Auth Login", e);
         res.status(500).json({ error: "Server error during login" });
     }
 });
 
 app.get("/api/leaderboard", async (req, res) => {
+    if (!databaseConfigured) {
+        return res.json({ leaderboard: [], database: "unconfigured" });
+    }
+
     try {
         const topPlayers = await prisma.user.findMany({
             orderBy: { total_wins: 'desc' },
@@ -94,12 +151,13 @@ app.get("/api/leaderboard", async (req, res) => {
         });
         res.json({ leaderboard: topPlayers });
     } catch (e) {
-        console.error("[API] Leaderboard error:", e);
-        res.status(500).json({ error: "Failed to fetch leaderboard" });
+        logDatabaseError("API Leaderboard", e);
+        res.json({ leaderboard: [], database: "error" });
     }
 });
 
 app.get("/api/profile/:id", async (req, res) => {
+    if (!requireDatabase(res)) return;
     try {
         const user = await prisma.user.findUnique({ where: { id: req.params.id } });
         if (!user) return res.status(404).json({ error: "User not found" });
@@ -110,6 +168,7 @@ app.get("/api/profile/:id", async (req, res) => {
 });
 
 app.post("/api/profile/update", async (req, res) => {
+    if (!requireDatabase(res)) return;
     try {
         const { id, currentPassword, newUsername, newPassword } = req.body;
         const user = await prisma.user.findUnique({ where: { id } });
@@ -136,20 +195,36 @@ app.post("/api/profile/update", async (req, res) => {
         
         res.json({ id: updated.id, username: updated.username });
     } catch (e) {
-        console.error("[API] Profile update error:", e);
+        logDatabaseError("API Profile update", e);
         res.status(500).json({ error: "Server error updating profile" });
     }
 });
 
-// Health check
+// Health check with timeout to prevent hanging on Render
 app.get("/health", async (_req, res) => {
     let dbStatus = "ok";
-    try {
-        await prisma.$queryRaw`SELECT 1`;
-    } catch (e) {
-        dbStatus = "error";
+    if (!databaseConfigured) {
+        dbStatus = "unconfigured";
+    } else {
+        try {
+            // Add a timeout to the DB check
+            const dbCheck = prisma.$queryRaw`SELECT 1`;
+            const timeout = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error("Database timeout")), 3000)
+            );
+            await Promise.race([dbCheck, timeout]);
+        } catch (e) {
+            dbStatus = "error";
+            console.warn(`[Health Check] Database issue: ${e instanceof Error ? e.message : String(e)}`);
+        }
     }
-    res.json({ status: "ok", uptime: process.uptime(), database: dbStatus });
+    res.json({ 
+        status: "ok", 
+        uptime: process.uptime(), 
+        database: dbStatus,
+        version: "1.0.1",
+        timestamp: new Date().toISOString()
+    });
 });
 
 // Room listing
@@ -157,7 +232,7 @@ app.get("/rooms", async (_req, res) => {
     try {
         const rooms = await matchMaker.query({ name: "trio_room" });
         const publicRooms = rooms
-            .filter(r => !r.private && !r.locked)
+            .filter(r => !r.private) // Allow locked rooms (ongoing games) to be listed for observers
             .map(r => ({
                 roomId: r.roomId,
                 roomCode: r.metadata?.roomCode || "",
@@ -166,8 +241,7 @@ app.get("/rooms", async (_req, res) => {
                 status: r.metadata?.status || "waiting",
                 hostName: r.metadata?.hostName || "Unknown",
             }));
-        res.json({ rooms: publicRooms
-        });
+        res.json({ rooms: publicRooms });
     } catch (e) {
         res.json({ rooms: [] });
     }

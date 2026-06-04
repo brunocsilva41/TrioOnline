@@ -4,9 +4,7 @@ import { Player } from "../schemas/Player";
 import { Card } from "../schemas/Card";
 import { Trio } from "../schemas/Player";
 import { DeckManager } from "@trinity/core-engine";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "../db";
 
 /**
  * PROJECT TRINITY - TrioRoom (Official TRIO Rules)
@@ -50,7 +48,8 @@ export class TrioRoom extends Room<GameState> {
         const maxPlayers = Math.min(8, Math.max(2, options.maxPlayers || 8));
         this.state.maxPlayers = maxPlayers;
         this.state.minPlayers = options.minPlayers || 2;
-        this.maxClients = maxPlayers;
+        // Increase maxClients to allow spectators beyond players
+        this.maxClients = 25; 
 
         // Every room gets a code (for sharing). Private rooms are hidden from listing.
         this.state.roomCode = this.generateRoomCode();
@@ -82,6 +81,17 @@ export class TrioRoom extends Room<GameState> {
         });
         this.onMessage("NUDGE", (c, p: { targetSessionId: string }) => {
             this.broadcast("PLAYER_NUDGED", { from: c.sessionId, to: p.targetSessionId });
+        });
+        this.onMessage("CHAT", (c, p: { text: string }) => {
+            const pl = this.state.players.get(c.sessionId);
+            if (pl && p.text) {
+                this.broadcast("CHAT_MESSAGE", {
+                    sessionId: c.sessionId,
+                    displayName: pl.displayName,
+                    text: p.text.substring(0, 140),
+                    ts: Date.now()
+                });
+            }
         });
 
         // Game actions
@@ -172,7 +182,7 @@ export class TrioRoom extends Room<GameState> {
     private startCountdown() {
         this.state.status = "countdown";
         this.state.countdown = 3;
-        this.lock();
+        // Do NOT lock the room to allow observers to join ongoing matches
         let c = 3;
         const iv = this.clock.setInterval(() => {
             c--; this.state.countdown = c;
@@ -229,6 +239,10 @@ export class TrioRoom extends Room<GameState> {
     private beginPlaying() {
         this.gameStartTime = Date.now();
         this.state.status = "playing";
+
+        // Check for initial trios before starting turns
+        if (this.checkInitialTrios()) return;
+
         this.state.round = 1;
         const idx = Math.floor(Math.random() * this.turnOrderList.length);
         this.state.turnOrder = idx;
@@ -238,6 +252,54 @@ export class TrioRoom extends Room<GameState> {
         this.turnMatchValue = null;
         this.turnLocked = false;
         this.log(`TURN_START:${this.state.activePlayerSessionId}`);
+    }
+
+    /**
+     * Automatically detects and collects trios that were dealt in the initial hand.
+     * Returns true if a player won immediately.
+     */
+    private checkInitialTrios(): boolean {
+        let anyoneWon = false;
+
+        this.state.players.forEach((player, sid) => {
+            if (anyoneWon) return;
+
+            let foundTrio = true;
+            while (foundTrio) {
+                foundTrio = false;
+                const hand = player.hand.toArray();
+                if (hand.length < 3) break;
+
+                // Hands are sorted, so trios are adjacent
+                for (let i = 0; i <= hand.length - 3; i++) {
+                    if (hand[i].value === hand[i + 1].value && hand[i].value === hand[i + 2].value) {
+                        const val = hand[i].value;
+                        this.log(`INITIAL_TRIO:${sid}:${val}`);
+
+                        const normalizedCards = [
+                            { cardId: hand[i].id, value: val, source: "hand" as const, ownerSessionId: sid, tableIndex: -1 },
+                            { cardId: hand[i + 1].id, value: val, source: "hand" as const, ownerSessionId: sid, tableIndex: -1 },
+                            { cardId: hand[i + 2].id, value: val, source: "hand" as const, ownerSessionId: sid, tableIndex: -1 }
+                        ];
+
+                        this.collectTrio(sid, normalizedCards);
+                        this.broadcast("TRIO_CINEMATIC", { sid: sid, value: val, playerName: player.displayName });
+
+                        foundTrio = true;
+                        break;
+                    }
+                }
+            }
+
+            // Check win condition after collecting trios for this player
+            if (player.trios.length >= TrioRoom.TRIOS_TO_WIN ||
+                player.trios.toArray().some((t: Trio) => t.value === 7)) {
+                this.endGame(sid, "INITIAL_TRIOS_WIN");
+                anyoneWon = true;
+            }
+        });
+
+        return anyoneWon;
     }
 
     // ────────────────────────────────────────────
@@ -263,20 +325,17 @@ export class TrioRoom extends Room<GameState> {
         if (!target || target.hand.length === 0) return;
 
         // Find the lowest or highest non-revealed card
-        let cardIdx = -1;
         const handArr = target.hand.toArray();
-        if (payload.position === "lowest") {
-            for (let i = 0; i < handArr.length; i++) {
-                if (!handArr[i].isRevealed) { cardIdx = i; break; }
-            }
-        } else {
-            for (let i = handArr.length - 1; i >= 0; i--) {
-                if (!handArr[i].isRevealed) { cardIdx = i; break; }
-            }
-        }
-        if (cardIdx === -1) return;
+        let card: Card | undefined;
 
-        const card = target.hand.at(cardIdx)!;
+        if (payload.position === "lowest") {
+            card = handArr.find(c => !c.isRevealed);
+        } else {
+            card = [...handArr].reverse().find(c => !c.isRevealed);
+        }
+
+        if (!card) return;
+
         card.isRevealed = true;
         this.log(`HAND_REVEAL:${sid}:${payload.targetSessionId}:${payload.position}:${card.value}`);
         this.processReveal(sid, card.id, card.value, "hand", payload.targetSessionId, -1);
@@ -287,21 +346,17 @@ export class TrioRoom extends Room<GameState> {
         const player = this.state.players.get(sid);
         if (!player || player.hand.length === 0) return;
 
-        // Find own lowest or highest non-revealed card
-        let cardIdx = -1;
         const handArr = player.hand.toArray();
-        if (payload.position === "lowest") {
-            for (let i = 0; i < handArr.length; i++) {
-                if (!handArr[i].isRevealed) { cardIdx = i; break; }
-            }
-        } else {
-            for (let i = handArr.length - 1; i >= 0; i--) {
-                if (!handArr[i].isRevealed) { cardIdx = i; break; }
-            }
-        }
-        if (cardIdx === -1) return;
+        let card: Card | undefined;
 
-        const card = player.hand.at(cardIdx)!;
+        if (payload.position === "lowest") {
+            card = handArr.find(c => !c.isRevealed);
+        } else {
+            card = [...handArr].reverse().find(c => !c.isRevealed);
+        }
+
+        if (!card) return;
+
         card.isRevealed = true;
         this.log(`OWN_REVEAL:${sid}:${payload.position}:${card.value}`);
         this.processReveal(sid, card.id, card.value, "hand", sid, -1);
@@ -318,18 +373,20 @@ export class TrioRoom extends Room<GameState> {
     private getPlayerPontas(sid: string): { lowestValue: number; lowestId: number; highestValue: number; highestId: number } | null {
         const player = this.state.players.get(sid);
         if (!player || player.hand.length === 0) return null;
+        
         const arr = player.hand.toArray();
-        let lowestIdx = -1;
-        let highestIdx = -1;
-        for (let i = 0; i < arr.length; i++) {
-            if (!arr[i].isRevealed) { if (lowestIdx === -1) lowestIdx = i; highestIdx = i; }
-        }
-        if (lowestIdx === -1) return null;
+        const unrevealed = arr.filter(c => !c.isRevealed);
+        
+        if (unrevealed.length === 0) return null;
+        
+        const lowest = unrevealed[0];
+        const highest = unrevealed[unrevealed.length - 1];
+        
         return {
-            lowestValue: arr[lowestIdx].value,
-            lowestId: arr[lowestIdx].id,
-            highestValue: arr[highestIdx].value,
-            highestId: arr[highestIdx].id,
+            lowestValue: lowest.value,
+            lowestId: lowest.id,
+            highestValue: highest.value,
+            highestId: highest.id,
         };
     }
 
@@ -543,9 +600,21 @@ export class TrioRoom extends Room<GameState> {
     // ────────────────────────────────────────────
 
     onJoin(client: Client, options: any) {
-        // If game already started and not a reconnection, reject (though lock() handles most cases)
+        if (options.isObserver) {
+            this.state.spectatorCount++;
+            this.log(`OBSERVER_JOINED:${client.sessionId}`);
+            // Send initial metadata update
+            this.setMetadata({ playerCount: this.state.players.size, status: this.state.status });
+            return;
+        }
+
+        // If game already started and not a reconnection, reject
         if (this.state.status !== "waiting") {
             throw new Error("Game already in progress");
+        }
+
+        if (this.state.players.size >= this.state.maxPlayers) {
+            throw new Error("Room is full");
         }
 
         const p = new Player();
@@ -572,7 +641,11 @@ export class TrioRoom extends Room<GameState> {
 
     async onLeave(client: Client, consented: boolean) {
         const p = this.state.players.get(client.sessionId);
-        if (!p) return;
+        if (!p) {
+            // Must be an observer
+            this.state.spectatorCount = Math.max(0, this.state.spectatorCount - 1);
+            return;
+        }
         p.isOnline = false;
         if (this.state.status === "waiting") { this.removePlayer(client.sessionId); return; }
         try {
