@@ -35,20 +35,32 @@ jobs:
       - name: Build Project (Verification)
         run: pnpm run build
         env:
-          NODE_OPTIONS: "--max-old-space-size=4096" # GitHub runners have more RAM
+          NODE_OPTIONS: "--max-old-space-size=4096"
 
   deploy:
     needs: build-and-test
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     steps:
-      - name: Execute Remote Deploy Script via SSH
+      - name: Execute Remote Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ORACLE_HOST }}
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_SSH_KEY }}
           script: |
+            # Garante que o diretório existe ou clona se for a primeira vez
+            if [ ! -d "/home/ubuntu/TrioOnline" ]; then
+              git clone https://github.com/brunocsilva41/TrioOnline.git /home/ubuntu/TrioOnline
+            fi
+            
             cd /home/ubuntu/TrioOnline
+            
+            # Puxa o código novo (incluindo o deploy.sh) antes de tentar executá-lo
+            git fetch origin
+            git checkout sobe-nova-visu-a-pedido-dos-fans
+            git pull origin sobe-nova-visu-a-pedido-dos-fans
+            
+            # Agora sim, executa o script de deploy
             chmod +x deploy.sh
             ./deploy.sh
