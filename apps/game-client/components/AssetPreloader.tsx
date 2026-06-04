@@ -122,4 +122,4 @@ export default function AssetPreloader({ children }: { children: React.ReactNode
       </AnimatePresence>
     </PreloadContext.Provider>
   );
-  }
+}

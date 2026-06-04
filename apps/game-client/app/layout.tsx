@@ -32,11 +32,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${kanit.variable} ${poppins.variable}`}>
-      <head>
-        {CARD_ASSET_PATHS.map((src) => (
-          <link key={src} rel="preload" as="image" href={src} type="image/webp" />
-        ))}
-      </head>
       <body className="bg-slate-950 text-white overflow-hidden font-sans">
         <PWARegistry />
         <AssetPreloader>

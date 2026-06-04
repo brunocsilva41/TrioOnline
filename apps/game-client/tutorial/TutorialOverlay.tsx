@@ -32,7 +32,10 @@ export const TutorialOverlay: React.FC = () => {
     }
   }, [currentStep]);
 
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     updateHighlight();
     window.addEventListener('resize', updateHighlight);
     return () => window.removeEventListener('resize', updateHighlight);
@@ -62,7 +65,7 @@ export const TutorialOverlay: React.FC = () => {
     }
   };
 
-  if (!isVisible) return null;
+  if (!isVisible || !mounted) return null;
 
   return (
     <div className="fixed inset-0 z-[100] pointer-events-auto overflow-hidden">
@@ -112,7 +115,7 @@ export const TutorialOverlay: React.FC = () => {
             className={`
               absolute flex flex-col items-center justify-center p-8 text-center
               ${highlightRect 
-                ? (highlightRect.top > window.innerHeight / 2 
+                ? (highlightRect.top > (typeof window !== 'undefined' ? window.innerHeight : 0) / 2 
                     ? 'bottom-[60%] left-1/2 -translate-x-1/2' 
                     : 'top-[60%] left-1/2 -translate-x-1/2')
                 : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'}

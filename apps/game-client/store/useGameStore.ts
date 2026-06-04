@@ -105,6 +105,7 @@ interface GameStoreState {
 
   // === LOBBY ===
   availableRooms: RoomInfo[];
+  showTutorial: boolean;
 
   // === UX FLAGS (EC-004) ===
   isProcessing: boolean;
@@ -135,6 +136,7 @@ interface GameStoreState {
 
   // Lobby
   setAvailableRooms: (rooms: RoomInfo[]) => void;
+  setShowTutorial: (v: boolean) => void;
 
   // UX
   setThermalThrottled: (v: boolean) => void;
@@ -182,6 +184,7 @@ const initialState = {
   myHand: [] as CardData[],
   actionLogWindow: [] as string[],
   availableRooms: [] as RoomInfo[],
+  showTutorial: false,
   isProcessing: false,
   isThermalThrottled: false,
   isTensionActive: false,
@@ -189,6 +192,7 @@ const initialState = {
   nudgeEvent: null,
   emoteEvent: null,
   trioCinematicEvent: null,
+  cardRequestEvent: null,
 };
 
 export const useGameStore = create<GameStoreState>((set) => ({
@@ -246,8 +250,6 @@ export const useGameStore = create<GameStoreState>((set) => ({
   addActionLog: (log) => set((state) => ({
     actionLogWindow: [...state.actionLogWindow.slice(-9), log]
   })),
-
-  cardRequestEvent: null,
 
   triggerNudge: (from, to) => set({ nudgeEvent: { from, to, ts: Date.now() } }),
   triggerEmote: (sessionId, emote) => set({ emoteEvent: { sessionId, emote, ts: Date.now() } }),

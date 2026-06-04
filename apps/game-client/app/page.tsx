@@ -2,20 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import { useGameStore } from "../store/useGameStore";
 import { colyseusService } from "../networking/ColyseusService";
-import LobbyScreen from "../components/lobby/LobbyScreen";
-import RoomScreen from "../components/room/RoomScreen";
-import CountdownScreen from "../components/room/CountdownScreen";
-import DealingCinematic from "../components/game/DealingCinematic";
-import GameTable from "../components/GameTable";
-import GameOverScreen from "../components/game/GameOverScreen";
+
 import { TutorialOverlay } from "../tutorial/TutorialOverlay";
+
+// Dynamic imports to prevent SSR issues and reduce bundle size
+const LobbyScreen = dynamic(() => import("../components/lobby/LobbyScreen"), { ssr: false });
+const RoomScreen = dynamic(() => import("../components/room/RoomScreen"), { ssr: false });
+const CountdownScreen = dynamic(() => import("../components/room/CountdownScreen"), { ssr: false });
+const DealingCinematic = dynamic(() => import("../components/game/DealingCinematic"), { ssr: false });
+const GameTable = dynamic(() => import("../components/GameTable"), { ssr: false });
+const GameOverScreen = dynamic(() => import("../components/game/GameOverScreen"), { ssr: false });
 
 /**
  * PROJECT TRINITY - Main Entry Point
- * 
- * Manages App Phases and Global Reconnection Logic.
  */
 export default function Home() {
   const phase = useGameStore((s) => s.phase);
@@ -23,14 +25,15 @@ export default function Home() {
   const setShowTutorial = useGameStore((s) => s.setShowTutorial);
   const [reconnectPrompt, setReconnectPrompt] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Check for saved session on mount
   useEffect(() => {
+    setMounted(true);
     const saved = colyseusService.getSavedSession();
     if (saved && phase === "lobby") {
       setReconnectPrompt(true);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   const handleReconnect = async () => {
     const saved = colyseusService.getSavedSession();
@@ -40,16 +43,16 @@ export default function Home() {
     setReconnecting(false);
     setReconnectPrompt(false);
     if (!ok) {
-      // Session expired, go to lobby
       useGameStore.getState().resetGame();
     }
   };
 
   const handleDecline = () => {
     setReconnectPrompt(false);
-    // Clear stale session
     try { sessionStorage.removeItem("trinity_session"); } catch {}
   };
+
+  if (!mounted) return null;
 
   return (
     <main className="min-h-screen bg-[#020617] text-white overflow-hidden font-sans selection:bg-emerald-500/30">
@@ -70,18 +73,8 @@ export default function Home() {
       {/* ── Reconnect Dialog ── */}
       <AnimatePresence>
         {reconnectPrompt && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.8, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.8, y: 20 }}
-              className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center"
-            >
+          <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
               <div className="text-3xl mb-3">🎮</div>
               <h2 className="text-lg font-black font-display text-white mb-1">Partida em andamento</h2>
               <p className="text-xs text-white/40 mb-5">
@@ -103,8 +96,8 @@ export default function Home() {
                   {reconnecting ? "Reconectando..." : "Voltar ao Jogo"}
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
       </AnimatePresence>
 
