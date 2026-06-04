@@ -6,19 +6,29 @@ import Redis from "ioredis";
  * Centralized Redis connection and caching logic.
  * Used for Leaderboards, Presence, and scaling.
  */
-const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
+const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
+
+let connectionAttempts = 0;
 
 export const redis = new Redis(REDIS_URL, {
-    maxRetriesPerRequest: 3,
-    retryStrategy: (times) => Math.min(times * 100, 3000),
+    maxRetriesPerRequest: 1, 
+    retryStrategy: (times) => {
+        const delay = Math.min(times * 500, 10000);
+        return delay;
+    },
 });
 
 redis.on("error", (err) => {
-    console.warn("[Redis] Error connecting:", err.message);
+    connectionAttempts++;
+    // Only log every 5 attempts to avoid console spam during startup/local dev
+    if (connectionAttempts % 5 === 1) {
+        console.warn(`[Redis] Connection attempt failed: ${err.message || 'Check if Redis is running'}`);
+    }
 });
 
 redis.on("connect", () => {
-    console.log("[Redis] Connected successfully");
+    console.log("[Redis] Connected successfully to:", REDIS_URL);
+    connectionAttempts = 0;
 });
 
 export class RedisService {
