@@ -10,7 +10,13 @@ import CountdownScreen from "../components/room/CountdownScreen";
 import DealingCinematic from "../components/game/DealingCinematic";
 import GameTable from "../components/GameTable";
 import GameOverScreen from "../components/game/GameOverScreen";
+import { TutorialOverlay } from "../tutorial/TutorialOverlay";
 
+/**
+ * PROJECT TRINITY - Main Entry Point
+ * 
+ * Manages App Phases and Global Reconnection Logic.
+ */
 export default function Home() {
   const phase = useGameStore((s) => s.phase);
   const showTutorial = useGameStore((s) => s.showTutorial);
@@ -101,10 +107,13 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
-    </main>
-  );
-}
-}}
+
+      {/* ── Tutorial Overlay ── */}
+      <AnimatePresence>
+        {showTutorial && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[200]"
           >
