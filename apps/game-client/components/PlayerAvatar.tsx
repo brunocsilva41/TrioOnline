@@ -13,6 +13,7 @@ interface PlayerAvatarProps {
   showStatus?: boolean;
   showBadge?: boolean;
   showName?: boolean;
+  className?: string;
 }
 
 /**
@@ -29,7 +30,8 @@ const PlayerAvatar: React.FC<PlayerAvatarProps> = memo(({
   size = "md",
   showStatus = true,
   showBadge = true,
-  showName = true
+  showName = true,
+  className: classNameProp
 }) => {
   const storePlayer = useGameStore((s) => sessionId ? s.players[sessionId] : null);
   const activePlayerSessionId = useGameStore((s) => s.activePlayerSessionId);
@@ -66,7 +68,7 @@ const PlayerAvatar: React.FC<PlayerAvatarProps> = memo(({
     <motion.div
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      className="relative flex flex-col items-center gap-1.5"
+      className={`relative flex flex-col items-center gap-1.5 ${classNameProp || ""}`}
     >
       {/* Active turn ring */}
       <div className="relative">
