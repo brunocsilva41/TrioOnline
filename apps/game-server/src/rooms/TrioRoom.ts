@@ -263,8 +263,8 @@ export class TrioRoom extends Room<GameState> {
     private checkInitialTrios(): boolean {
         let anyoneWon = false;
 
-        this.state.players.forEach((player, sid) => {
-            if (anyoneWon) return;
+        for (const [sid, player] of this.state.players.entries()) {
+            if (anyoneWon) break;
 
             let foundTrio = true;
             while (foundTrio) {
@@ -272,7 +272,6 @@ export class TrioRoom extends Room<GameState> {
                 const hand = player.hand.toArray();
                 if (hand.length < 3) break;
 
-                // Hands are sorted, so trios are adjacent
                 for (let i = 0; i <= hand.length - 3; i++) {
                     if (hand[i].value === hand[i + 1].value && hand[i].value === hand[i + 2].value) {
                         const val = hand[i].value;
@@ -287,22 +286,20 @@ export class TrioRoom extends Room<GameState> {
                         this.collectTrio(sid, normalizedCards);
                         this.broadcast("TRIO_CINEMATIC", { sid: sid, value: val, playerName: player.displayName });
 
+                        if (player.trios.length >= TrioRoom.TRIOS_TO_WIN || val === 7) {
+                            this.endGame(sid, "INITIAL_TRIOS_WIN");
+                            anyoneWon = true;
+                            break;
+                        }
                         foundTrio = true;
                         break;
                     }
                 }
             }
-
-            // Check win condition after collecting trios for this player
-            if (player.trios.length >= TrioRoom.TRIOS_TO_WIN ||
-                player.trios.toArray().some((t: Trio) => t.value === 7)) {
-                this.endGame(sid, "INITIAL_TRIOS_WIN");
-                anyoneWon = true;
-            }
-        });
-
+        }
         return anyoneWon;
     }
+
 
     // ────────────────────────────────────────────
     // GAME ACTIONS

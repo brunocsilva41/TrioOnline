@@ -131,9 +131,117 @@ export default function LobbyScreen() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.05, filter: "blur(20px)" }}
-      className="relative w-full min-h-[100dvh] flex flex-col items-center justify-center overflow-y-auto overflow-x-hidden p-4 sm:p-8 lg:p-12"
+      className="relative w-full min-h-[100dvh] flex flex-col items-center justify-center overflow-y-auto overflow-x-hidden p-4 sm:p-12 lg:p-24"
     >
-      <div className="fixed top-4 left-4 sm:top-8 sm:left-8 z-50">
+      {/* Animated Background */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,_rgba(52,211,153,0.08)_0%,_transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,_rgba(251,191,36,0.04)_0%,_transparent_40%)]" />
+        <FloatingCardsLounge />
+        <ParticleField />
+      </div>
+
+      <div className="absolute top-8 left-8 z-50 lg:static lg:mb-0">
+  ...
+  function SideButton({ onClick, label, icon, color }: any) {
+  ...
+    </button>
+  );
+  }
+
+  // Ambient particle effect - uses deterministic positions to avoid hydration mismatch
+  const PARTICLE_SEEDS = Array.from({ length: 30 }, (_, i) => ({
+  x: ((i * 37 + 13) % 100),
+  y: ((i * 53 + 7) % 100),
+  scale: 0.2 + ((i * 17) % 80) / 100,
+  targetX: ((i * 61 + 29) % 100),
+  targetY: ((i * 43 + 19) % 100),
+  duration: 15 + ((i * 31) % 25),
+  delay: i * 0.1,
+  color: i % 3 === 0 ? "rgba(52,211,153,0.3)" : i % 3 === 1 ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.1)",
+  }));
+
+  function ParticleField() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {PARTICLE_SEEDS.map((seed, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full blur-[1px]"
+          style={{
+            width: `${seed.scale * 4}px`,
+            height: `${seed.scale * 4}px`,
+            backgroundColor: seed.color,
+          }}
+          initial={{
+            x: `${seed.x}%`,
+            y: `${seed.y}%`,
+            scale: seed.scale,
+            opacity: 0,
+          }}
+          animate={{
+            y: [`${seed.y}%`, `${seed.targetY}%`, `${seed.y}%`],
+            x: [`${seed.x}%`, `${seed.targetX}%`, `${seed.x}%`],
+            opacity: [0, 0.5, 0],
+          }}
+          transition={{
+            duration: seed.duration,
+            repeat: Infinity,
+            delay: seed.delay,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+  }
+
+  // 3D Lounge Floating Cards
+  function FloatingCardsLounge() {
+  const cards = [1, 5, 8, 12, "back"] as const;
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none perspective-[1000px]">
+      {cards.map((val, i) => (
+        <motion.div
+          key={i}
+          initial={{
+            opacity: 0,
+            y: "100vh",
+            x: `${10 + i * 20}vw`,
+            rotateX: 45,
+            rotateY: i % 2 === 0 ? -20 : 20,
+            rotateZ: i * 15
+          }}
+          animate={{
+            y: "-20vh",
+            x: [`${10 + i * 20}vw`, `${15 + i * 15}vw`, `${10 + i * 20}vw`],
+            rotateX: [45, 60, 45],
+            rotateY: [i % 2 === 0 ? -20 : 20, i % 2 === 0 ? 10 : -10, i % 2 === 0 ? -20 : 20],
+            rotateZ: [i * 15, i * 15 + 45, i * 15 + 90],
+            opacity: [0, 0.15, 0]
+          }}
+          transition={{
+            duration: 15 + i * 5,
+            repeat: Infinity,
+            delay: i * 2,
+            ease: "linear"
+          }}
+          className="absolute w-24 h-36 rounded-xl shadow-2xl"
+          style={{ transformStyle: "preserve-3d" }}
+        >
+          <CardImage
+            value={typeof val === "number" ? val : undefined}
+            src={val === "back" ? "/cards/trio_back_card.webp" : undefined}
+            className="rounded-xl opacity-60"
+            eager={false}
+          />
+        </motion.div>
+      ))}
+    </div>
+  );
+  }
+
         <AuthWidget />
       </div>
 
