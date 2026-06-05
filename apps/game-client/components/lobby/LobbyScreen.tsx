@@ -132,80 +132,91 @@ export default function LobbyScreen() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.05, filter: "blur(20px)" }}
-      className="relative w-full min-h-[100dvh] flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-8 pb-32 sm:py-12"
+      className="relative w-full min-h-[100dvh] flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden pt-8 pb-32 sm:py-12 px-4"
     >
-      <div className="z-10 text-center mb-6 sm:mb-12 relative px-4">
-        <h1 className="text-4xl sm:text-7xl font-black font-display tracking-tighter flex items-center justify-center gap-1">
-          <span className="text-white">TRIO</span>
-          <span className="text-emerald-400">ONLINE</span>
-        </h1>
-      </div>
+      <div className="w-full max-w-7xl flex flex-col lg:flex-row items-center lg:items-start justify-center gap-8 lg:gap-16 relative">
+        
+        {/* Left Column: Title + Menu */}
+        <div className="flex-1 flex flex-col items-center max-w-lg w-full">
+          <div className="z-10 text-center mb-10 sm:mb-16 relative">
+            <h1 className="text-5xl sm:text-8xl font-black font-display tracking-tighter flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 leading-none">
+              <span className="text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">TRIO</span>
+              <span className="text-emerald-400 drop-shadow-[0_0_40px_rgba(52,211,153,0.3)]">ONLINE</span>
+            </h1>
+            <div className="h-1.5 w-24 bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent mx-auto mt-6 rounded-full" />
+          </div>
 
-      <div className="w-full max-w-md z-20">
-        <LeaderboardWidget />
-      </div>
+          <motion.div
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="z-10 w-full"
+          >
+            <div className="bg-slate-900/60 backdrop-blur-3xl border border-white/10 rounded-[3rem] p-8 shadow-2xl relative overflow-hidden">
+               {/* 3D Glass Effect */}
+               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+               
+               <AnimatePresence mode="wait">
+                 {view === "main" && (
+                   <MainMenu
+                     playerName={playerName}
+                     onNameChange={setPlayerName}
+                     onCreateRoom={() => setView("create")}
+                     onJoinCode={() => setView("join")}
+                     onBrowse={() => setView("browse")}
+                     onQuickMatch={handleQuickMatch}
+                     onShowTutorial={() => setShowTutorial(true)}
+                     loading={loading}
+                     isLoggedIn={!!authUser}
+                     serverStatus={serverStatus.status}
+                     onRetryServer={serverStatus.checkNow}
+                   />
+                 )}
+                 {view === "create" && (
+                   <CreateRoomPanel
+                     isPrivate={isPrivate}
+                     setIsPrivate={setIsPrivate}
+                     maxPlayers={maxPlayers}
+                     setMaxPlayers={setMaxPlayers}
+                     onConfirm={handleCreateRoom}
+                     onBack={() => setView("main")}
+                     loading={loading}
+                     serverStatus={serverStatus.status}
+                   />
+                 )}
+                 {view === "join" && (
+                   <JoinByCodePanel
+                     code={joinCode}
+                     setCode={setJoinCode}
+                     onJoin={handleJoinByCode}
+                     onBack={() => setView("main")}
+                     loading={loading}
+                     serverStatus={serverStatus.status}
+                   />
+                 )}
+                 {view === "browse" && (
+                   <BrowseRoomsPanel
+                     rooms={availableRooms}
+                     onJoin={handleJoinRoom}
+                     onObserve={handleObserveRoom}
+                     onBack={() => setView("main")}
+                     loading={loading}
+                     serverStatus={serverStatus.status}
+                   />
+                 )}
+               </AnimatePresence>
+            </div>
 
-      <motion.div
-        initial={{ y: 40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="z-10 w-full max-w-lg px-4 sm:px-6"
-      >
-        <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-6 shadow-2xl">
-          <AnimatePresence mode="wait">
-            {view === "main" && (
-              <MainMenu
-                playerName={playerName}
-                onNameChange={setPlayerName}
-                onCreateRoom={() => setView("create")}
-                onJoinCode={() => setView("join")}
-                onBrowse={() => setView("browse")}
-                onQuickMatch={handleQuickMatch}
-                onShowTutorial={() => setShowTutorial(true)}
-                loading={loading}
-                isLoggedIn={!!authUser}
-                serverStatus={serverStatus.status}
-                onRetryServer={serverStatus.checkNow}
-              />
+            {error && (
+              <p className="text-rose-400 text-[10px] font-black uppercase tracking-[0.2em] text-center mt-8 bg-rose-500/10 py-4 px-6 rounded-2xl border border-rose-500/20">⚠️ {error}</p>
             )}
-            {view === "create" && (
-              <CreateRoomPanel
-                isPrivate={isPrivate}
-                setIsPrivate={setIsPrivate}
-                maxPlayers={maxPlayers}
-                setMaxPlayers={setMaxPlayers}
-                onConfirm={handleCreateRoom}
-                onBack={() => setView("main")}
-                loading={loading}
-                serverStatus={serverStatus.status}
-              />
-            )}
-            {view === "join" && (
-              <JoinByCodePanel
-                code={joinCode}
-                setCode={setJoinCode}
-                onJoin={handleJoinByCode}
-                onBack={() => setView("main")}
-                loading={loading}
-                serverStatus={serverStatus.status}
-              />
-            )}
-            {view === "browse" && (
-              <BrowseRoomsPanel
-                rooms={availableRooms}
-                onJoin={handleJoinRoom}
-                onObserve={handleObserveRoom}
-                onBack={() => setView("main")}
-                loading={loading}
-                serverStatus={serverStatus.status}
-              />
-            )}
-          </AnimatePresence>
+          </motion.div>
         </div>
 
-        {error && (
-          <p className="text-rose-400 text-xs text-center mt-6 font-bold tracking-widest uppercase">⚠️ {error}</p>
-        )}
-      </motion.div>
+        {/* Right Column: Leaderboard */}
+        <div className="w-full lg:w-[500px] z-20 flex-none">
+          <LeaderboardWidget />
+        </div>
+      </div>
 
       <AuthWidget />
     </motion.div>

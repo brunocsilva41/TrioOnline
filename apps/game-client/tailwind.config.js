@@ -7,8 +7,9 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-poppins)", "sans-serif"],
+        sans: ["var(--font-space)", "var(--font-poppins)", "sans-serif"],
         display: ["var(--font-kanit)", "sans-serif"],
+        mono: ["var(--font-space)", "monospace"],
       },
       colors: {
         trinity: {

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Kanit, Poppins } from "next/font/google";
+import { Kanit, Poppins, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import AssetPreloader from "../components/AssetPreloader";
 import PWARegistry from "../components/PWARegistry";
@@ -17,11 +17,17 @@ const poppins = Poppins({
   variable: "--font-poppins",
 });
 
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-space",
+});
+
 export const metadata: Metadata = {
   title: "Trio Online - Trinity",
   description: "Experience the ultimate Triple Match game.",
   icons: {
-    icon: [{ url: "/icon.webp", type: "image/webp" }],
+    icon: [{ url: "/cards/trio_back_card.webp", type: "image/webp" }],
   },
 };
 
@@ -31,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${kanit.variable} ${poppins.variable}`}>
+    <html lang="en" className={`${kanit.variable} ${poppins.variable} ${spaceGrotesk.variable}`}>
       <head>
         {CARD_ASSET_PATHS.map((src) => (
           <link key={src} rel="preload" as="image" href={src} type="image/webp" />

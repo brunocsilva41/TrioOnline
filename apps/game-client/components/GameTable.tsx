@@ -25,12 +25,12 @@ const Timer = memo(() => {
   const total = Math.ceil(rem / 20);
   const col = pct < 20 ? "bg-red-500" : pct < 50 ? "bg-amber-400" : "bg-emerald-400";
   return (
-    <div className="flex items-center gap-2 bg-black/60 px-3 py-1.5 rounded-lg border border-white/10 shadow-inner">
-      <Clock size={12} className={pct < 20 ? "text-red-400" : "text-emerald-400"} />
-      <div className="w-16 h-1.5 bg-white/5 rounded-full overflow-hidden">
+    <div className="flex items-center gap-3 bg-black/60 px-4 py-2 rounded-xl border border-white/10 shadow-inner">
+      <Clock size={14} className={pct < 20 ? "text-red-400" : "text-emerald-400"} />
+      <div className="w-20 h-2 bg-white/5 rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all duration-500 ${col}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className={`text-[10px] font-mono font-bold tabular-nums ${pct < 20 ? "text-red-400" : "text-white"}`}>
+      <span className={`text-xs font-mono font-black tabular-nums ${pct < 20 ? "text-red-400" : "text-white"}`}>
         {Math.floor(total / 60)}:{String(total % 60).padStart(2, "0")}
       </span>
     </div>
@@ -52,7 +52,7 @@ const FormedTriosPanel = memo(({ trios, scale = 1 }: { trios: TrioData[], scale?
           className="relative flex items-center justify-center"
         >
            {[0, 1, 2].map((offset) => (
-             <div key={offset} className="absolute w-full h-full rounded-[2px] shadow-lg ring-1 ring-amber-400/20 overflow-hidden bg-slate-800" 
+             <div key={offset} className="absolute w-full h-full rounded-md shadow-lg ring-1 ring-amber-400/20 overflow-hidden bg-slate-800" 
                   style={{ transform: `translate(${offset * 3 * scale}px, ${offset * -2 * scale}px) rotate(${offset * 2}deg)`, zIndex: offset }}>
                 <Image src={`/cards/card_${trio.value}.webp`} alt={`Trio ${trio.value}`} fill sizes="60px" className="object-cover" />
              </div>
@@ -77,38 +77,38 @@ const GameHeader = memo(() => {
   const lastEvent = useMemo(() => {
     if (!logs.length) return "";
     const l = logs[logs.length - 1];
-    if (l.startsWith("MATCH_TARGET:")) return "Buscando...";
-    if (l.startsWith("MATCH:")) return "Combinado!";
-    if (l.startsWith("MISMATCH:")) return "Vez encerrada";
-    if (l.startsWith("TRIO_COMPLETE:")) return `Trio completo!`;
+    if (l.startsWith("MATCH_TARGET:")) return "BUSCANDO...";
+    if (l.startsWith("MATCH:")) return "COMBINADO!";
+    if (l.startsWith("MISMATCH:")) return "ERROU!";
+    if (l.startsWith("TRIO_COMPLETE:")) return `TRIO COMPLETO!`;
     if (l.startsWith("TURN_START:")) { const sid = l.split(":")[1]; return sid === mySid ? "SUA VEZ" : players[sid]?.displayName.toUpperCase(); }
     return "";
   }, [logs, mySid, players]);
 
   return (
-    <div className="flex-none h-14 flex items-center justify-between px-4 sm:px-6 border-b border-white/5 bg-slate-950/80 backdrop-blur-2xl z-50">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-          <Swords size={14} className="text-emerald-400" />
-          <span className="text-[11px] font-black font-display text-emerald-400 uppercase tracking-widest">R{round}</span>
+    <div className="flex-none h-16 flex items-center justify-between px-6 sm:px-10 border-b border-white/5 bg-slate-950/80 backdrop-blur-3xl z-50">
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+          <Swords size={18} className="text-emerald-400" />
+          <span className="text-sm font-black text-emerald-400 uppercase tracking-[0.2em]">Rodada {round}</span>
         </div>
         <Timer />
       </div>
 
       <AnimatePresence mode="wait">
         {lastEvent && (
-          <motion.div key={lastEvent} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} 
-            className="hidden md:flex px-6 py-1.5 rounded-full bg-emerald-500/5 border border-emerald-500/20">
-            <span className={`text-[10px] font-black font-display tracking-[0.3em] uppercase ${isMyTurn ? "text-emerald-400" : "text-amber-400"}`}>
+          <motion.div key={lastEvent} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1 }} 
+            className="hidden md:flex px-8 py-2 rounded-full bg-white/[0.03] border border-white/10 shadow-lg">
+            <span className={`text-xs font-black tracking-[0.4em] uppercase ${isMyTurn ? "text-emerald-400" : "text-amber-400"}`}>
               {lastEvent}
             </span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <button onClick={() => colyseusService.leaveRoom()} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/20 hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 transition-all text-white/70 group">
-        <LogOut size={14} />
-        <span className="text-[9px] font-black font-display uppercase tracking-widest hidden sm:inline">Abandonar</span>
+      <button onClick={() => colyseusService.leaveRoom()} className="flex items-center gap-3 px-6 py-2.5 rounded-xl border border-white/10 hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all text-white font-black text-xs uppercase tracking-[0.2em] group shadow-xl active:scale-95">
+        <LogOut size={18} />
+        <span className="hidden sm:inline">Sair do Jogo</span>
       </button>
     </div>
   );
@@ -183,53 +183,53 @@ const OpponentSeat = memo(({ player, isActive, isMyTurn }: { player: PlayerData,
       animate={isNudged ? { x: [-3, 3, -3, 3, 0], transition: { duration: 0.3 } } : {}}
       whileHover={{ y: -5, rotateX: 2, rotateY: -2 }}
       className={`
-        flex flex-col p-4 rounded-[2rem] border transition-all duration-500 min-w-[280px] relative overflow-hidden
-        ${isActive ? 'bg-slate-900/90 border-emerald-500/50 shadow-[0_20px_50px_rgba(16,185,129,0.2)] scale-105 z-10' : 'bg-slate-950/60 border-white/10 hover:bg-slate-900/80 shadow-xl'}
+        flex flex-col p-5 rounded-[2.5rem] border transition-all duration-500 min-w-[300px] relative overflow-hidden
+        ${isActive ? 'bg-slate-900/95 border-emerald-500 shadow-[0_20px_60px_rgba(16,185,129,0.25)] scale-105 z-10' : 'bg-slate-950/60 border-white/10 hover:bg-slate-900/80 shadow-2xl'}
       `}
     >
        {/* 3D Glass Highlight */}
-       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
        
        <div className="flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-5">
              <PlayerAvatar sessionId={player.sessionId} isActive={isActive} showName={false} showBadge={false} size="lg" />
              <div className="flex flex-col min-w-0">
-                <span className={`text-xs font-black font-display uppercase tracking-wider truncate max-w-[120px] ${isActive ? 'text-emerald-400' : 'text-white'}`}>
+                <span className={`text-sm font-black uppercase tracking-wider truncate max-w-[140px] ${isActive ? 'text-emerald-400' : 'text-white'}`}>
                    {player.displayName}
                 </span>
-                <div className="flex items-center gap-1.5 mt-1">
-                   <Hand size={10} className="text-white/40" />
-                   <span className="text-[9px] font-black font-display text-white/60 tracking-[0.1em] uppercase">{player.handCount} Cartas</span>
+                <div className="flex items-center gap-2 mt-1.5 px-2 py-0.5 rounded-md bg-white/5 border border-white/5 w-fit">
+                   <Hand size={12} className="text-white/40" />
+                   <span className="text-[10px] font-black text-white/60 tracking-[0.1em] uppercase">{player.handCount} CARTAS</span>
                 </div>
              </div>
           </div>
 
           <div className="flex flex-col items-end">
-             <div className="flex items-center gap-1.5 mb-2">
-                <Target size={10} className="text-white/30" />
-                <span className="text-[8px] font-black font-display text-white/40 uppercase tracking-[0.2em]">Trios</span>
+             <div className="flex items-center gap-2 mb-2">
+                <Target size={12} className="text-white/30" />
+                <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em]">Trios</span>
              </div>
-             <FormedTriosPanel trios={player.trios} scale={0.7} />
+             <FormedTriosPanel trios={player.trios} scale={0.75} />
           </div>
        </div>
 
        {isMyTurn && player.handCount > 0 && (
-         <div className="flex gap-2 w-full mt-4 pt-3 border-t border-white/5 relative z-10">
+         <div className="flex gap-2 w-full mt-5 pt-4 border-t border-white/5 relative z-10">
             <button 
                disabled={isProcessing}
                onClick={() => colyseusService.sendAskPlayerCard(player.sessionId, "lowest")} 
-               className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 rounded-xl transition-all active:scale-95 group disabled:opacity-50"
+               className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 bg-white/5 hover:bg-emerald-500 border border-white/10 hover:border-emerald-400 rounded-2xl transition-all active:scale-95 group disabled:opacity-50 text-white hover:text-black shadow-lg"
             >
-               <ArrowDownToLine size={12} className="text-emerald-400 group-hover:scale-110 transition-transform" />
-               <span className="text-[9px] font-black font-display text-emerald-400 uppercase tracking-widest">Menor</span>
+               <ArrowDownToLine size={16} className="group-hover:translate-y-0.5 transition-transform" />
+               <span className="text-xs font-black uppercase tracking-[0.2em]">Menor</span>
             </button>
             <button 
                disabled={isProcessing}
                onClick={() => colyseusService.sendAskPlayerCard(player.sessionId, "highest")} 
-               className="flex-1 flex items-center justify-center gap-2 py-2 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 hover:border-violet-500/40 rounded-xl transition-all active:scale-95 group disabled:opacity-50"
+               className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 bg-white/5 hover:bg-amber-500 border border-white/10 hover:border-amber-400 rounded-2xl transition-all active:scale-95 group disabled:opacity-50 text-white hover:text-black shadow-lg"
             >
-               <ArrowUpToLine size={12} className="text-violet-400 group-hover:scale-110 transition-transform" />
-               <span className="text-[9px] font-black font-display text-violet-400 uppercase tracking-widest">Maior</span>
+               <ArrowUpToLine size={16} className="group-hover:-translate-y-0.5 transition-transform" />
+               <span className="text-xs font-black uppercase tracking-[0.2em]">Maior</span>
             </button>
          </div>
        )}
@@ -268,67 +268,70 @@ const TableSurface = memo(({ cards }: { cards: CardData[] }) => {
 TableSurface.displayName = "TableSurface";
 
 // ==========================================
-// 6. PLAYER AREA (3D DASHBOARD STYLE)
+// 6. PLAYER AREA (3D DASHBOARD STYLE - 5% Reduced Height)
 // ==========================================
 const PlayerArea = memo(({ player, isMyTurn }: { player: PlayerData, isMyTurn: boolean }) => {
   const myHand = useGameStore((s) => s.myHand);
 
   return (
-    <div className="flex-none bg-slate-950/95 border-t border-white/10 z-40 relative px-4 sm:px-8 py-4 shadow-[0_-20px_50px_rgba(0,0,0,0.8)]">
+    <div className="flex-none bg-slate-950/98 border-t border-white/10 z-40 relative px-4 sm:px-12 py-3 shadow-[0_-20px_60px_rgba(0,0,0,0.9)]">
        {/* 3D Active Turn Glow */}
-       {isMyTurn && <motion.div initial={{ opacity: 0 }} animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 2, repeat: Infinity }} 
-           className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_30px_rgba(16,185,129,0.8)]" />}
+       {isMyTurn && <motion.div initial={{ opacity: 0 }} animate={{ opacity: [0.4, 0.8, 0.4] }} transition={{ duration: 1.5, repeat: Infinity }} 
+           className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_40px_rgba(16,185,129,1)]" />}
 
-       <div className="w-full max-w-7xl mx-auto flex flex-col sm:flex-row items-center gap-6 sm:gap-12 min-h-[120px]">
+       <div className="w-full max-w-7xl mx-auto flex flex-col sm:flex-row items-center gap-6 sm:gap-16 min-h-[110px]">
           {/* 3D PROFILE CARD */}
-          <div className="hidden lg:flex flex-none items-center gap-5 w-72 bg-white/[0.03] p-4 rounded-[1.5rem] border border-white/10 shadow-lg">
+          <div className="hidden lg:flex flex-none items-center gap-6 w-80 bg-white/[0.04] p-5 rounded-[2.5rem] border border-white/10 shadow-2xl relative group overflow-hidden">
+             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
              <PlayerAvatar sessionId={player?.sessionId} isActive={isMyTurn} size="lg" showName={false} showBadge={false} />
-             <div className="flex flex-col min-w-0">
-                <span className="text-base font-black font-display text-white uppercase truncate tracking-tight">{player?.displayName}</span>
-                <div className={`flex items-center gap-2 mt-1 px-3 py-1 rounded-full text-[10px] font-black font-display tracking-widest border transition-colors
-                  ${isMyTurn ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-white/5 text-white/40 border-white/5'}`}>
-                   {isMyTurn ? "SEU TURNO" : "AGUARDANDO"}
+             <div className="flex flex-col min-w-0 relative z-10">
+                <span className="text-xl font-black font-display text-white uppercase truncate tracking-tight">{player?.displayName}</span>
+                <div className={`flex items-center gap-2 mt-2 px-4 py-1.5 rounded-full text-[10px] font-black tracking-[0.2em] border transition-all
+                  ${isMyTurn ? 'bg-emerald-500 text-black border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-white/5 text-white/40 border-white/5'}`}>
+                   {isMyTurn ? "SUA VEZ" : "AGUARDANDO"}
                 </div>
              </div>
           </div>
 
-          <div className="flex-1 w-full h-[140px] flex items-center justify-center relative overflow-visible">
+          <div className="flex-1 w-full h-[130px] flex items-center justify-center relative overflow-visible">
               <div className="flex items-end justify-center w-full max-w-5xl px-2">
                  {myHand.map((card, i) => {
                     const count = myHand.length;
                     const center = (count - 1) / 2;
                     const offset = i - center;
-                    const maxOverlap = count > 12 ? -3.5 : count > 8 ? -3 : -2;
+                    const maxOverlap = count > 12 ? -3.5 : count > 8 ? -3 : -2.2;
                     const overlapX = i === 0 ? 0 : `${maxOverlap}rem`;
-                    const rotation = offset * (count > 10 ? 1.5 : 2.5);
+                    const rotation = offset * (count > 10 ? 1.2 : 2);
                     const yOffset = Math.abs(offset) * (count > 10 ? 3 : 5);
                     
                     return (
                       <motion.div key={card.id} 
-                        className="w-[80px] sm:w-[100px] aspect-[2/3] relative flex-shrink-0"
+                        className="w-[85px] sm:w-[105px] aspect-[2/3] relative flex-shrink-0"
                         style={{ marginLeft: overlapX, zIndex: i }}
                         animate={{ rotate: rotation, y: yOffset }}
-                        whileHover={{ y: -45, scale: 1.2, zIndex: 100, rotate: 0 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        whileHover={{ y: -50, scale: 1.25, zIndex: 100, rotate: 0 }}
+                        transition={{ type: "spring", stiffness: 350, damping: 25 }}
                       >
                          <Card cardData={card} index={i} location="hand" />
                       </motion.div>
                     );
                  })}
                  {myHand.length === 0 && (
-                    <span className="text-sm font-black font-display text-white/20 uppercase tracking-[0.6em] italic animate-pulse">Aguardando Distribuição</span>
+                    <span className="text-sm font-black text-white/20 uppercase tracking-[0.8em] italic animate-pulse">Aguardando Distribuição</span>
                  )}
               </div>
           </div>
 
           {/* TRIOS DASHBOARD */}
-          <div className="flex-none flex flex-col items-center sm:items-end w-full sm:w-80 lg:pl-8 border-l border-white/5">
-             <div className="flex items-center gap-3 mb-4">
-                <Trophy size={18} className="text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.4)]" />
-                <span className="text-xs font-black font-display text-white uppercase tracking-[0.2em]">Meus Trios</span>
+          <div className="flex-none flex flex-col items-center sm:items-end w-full sm:w-80 lg:pl-10 border-l border-white/5">
+             <div className="flex items-center gap-4 mb-5 group">
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 group-hover:scale-110 transition-transform shadow-lg shadow-amber-500/5">
+                  <Trophy size={20} className="text-amber-400" />
+                </div>
+                <span className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Meus Trios</span>
              </div>
              <div className="flex justify-center sm:justify-end w-full overflow-visible">
-                <FormedTriosPanel trios={player?.trios || []} scale={1.5} />
+                <FormedTriosPanel trios={player?.trios || []} scale={1.65} />
              </div>
           </div>
        </div>
@@ -376,7 +379,7 @@ const GameTable: React.FC = memo(() => {
       <GameHeader />
 
       <div className="flex-none w-full overflow-hidden bg-gradient-to-b from-black/80 to-transparent z-40">
-         <div className="flex items-start justify-center gap-6 px-4 pt-8 pb-4 overflow-x-auto custom-scroll-hidden">
+         <div className="flex items-start justify-center gap-8 px-6 pt-10 pb-6 overflow-x-auto custom-scroll-hidden">
             {opponents.map(p => (
                <OpponentSeat key={p.sessionId} player={p} isActive={p.sessionId === activeSid} isMyTurn={isMyTurn} />
             ))}
@@ -393,10 +396,10 @@ const GameTable: React.FC = memo(() => {
         {isMyTurn && (
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.08, 0] }}
+            animate={{ opacity: [0, 0.06, 0] }}
             exit={{ opacity: 0 }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="absolute inset-0 pointer-events-none ring-inset ring-[10px] ring-emerald-500/20 z-50 mix-blend-overlay"
+            className="absolute inset-0 pointer-events-none ring-inset ring-[15px] ring-emerald-500/20 z-50 mix-blend-overlay"
           />
         )}
       </AnimatePresence>

@@ -57,11 +57,11 @@ export default function LeaderboardWidget() {
   }, []);
 
   return (
-    <div className="relative sm:fixed sm:top-8 sm:right-8 z-40 w-full sm:w-[540px] pointer-events-none mb-12 sm:mb-0 px-4 sm:px-0">
+    <div className="relative z-40 w-full pointer-events-none mb-12 lg:mb-0">
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="bg-black/40 backdrop-blur-[40px] border border-white/10 rounded-[2.5rem] shadow-[0_32px_120px_rgba(0,0,0,0.6)] pointer-events-auto overflow-hidden relative aurora-bg"
+        className="bg-black/40 backdrop-blur-[40px] border border-white/10 rounded-[3rem] shadow-[0_32px_120px_rgba(0,0,0,0.6)] pointer-events-auto overflow-hidden relative aurora-bg"
       >
         {/* Subtle Top Inner Glow */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
