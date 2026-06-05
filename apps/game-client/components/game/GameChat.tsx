@@ -127,7 +127,7 @@ export default function GameChat() {
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="pointer-events-auto w-80 h-96 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden mt-2"
+            className="pointer-events-auto w-[calc(100vw-32px)] sm:w-80 h-[60vh] sm:h-96 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden mt-2"
           >
             <div className="p-4 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
               <span className="text-[10px] font-black tracking-[0.2em] text-white/50 uppercase">Canal de Voz</span>

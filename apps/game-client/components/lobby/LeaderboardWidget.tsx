@@ -57,7 +57,7 @@ export default function LeaderboardWidget() {
   }, []);
 
   return (
-    <div className="relative z-40 w-full pointer-events-none mb-12 lg:mb-0">
+    <div className="relative z-40 w-full pointer-events-none">
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}

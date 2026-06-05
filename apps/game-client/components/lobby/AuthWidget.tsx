@@ -124,9 +124,9 @@ export default function AuthWidget() {
         onClick={openWidget}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="fixed bottom-8 left-8 z-50 flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-full hover:bg-white/10 transition-colors shadow-2xl"
+        className="flex items-center gap-2 sm:gap-4 bg-white/5 backdrop-blur-xl border border-white/10 px-4 py-3 sm:px-6 sm:py-4 rounded-full hover:bg-white/10 transition-colors shadow-2xl"
       >
-        <div className={`relative w-10 h-10 rounded-full flex items-center justify-center font-black font-display text-base overflow-hidden
+        <div className={`relative w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black font-display text-xs sm:text-base overflow-hidden
           ${authUser ? 'bg-emerald-500 text-black shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-white/10 text-white/50'}`}>
           {authUser?.avatar_url ? (
             <img src={authUser.avatar_url} alt={authUser.username} className="w-full h-full object-cover" />
@@ -134,11 +134,11 @@ export default function AuthWidget() {
             authUser ? authUser.username.charAt(0).toUpperCase() : "?"
           )}
         </div>
-        <div className="text-left hidden sm:block pr-3">
-          <p className="text-xs font-bold text-white leading-tight">
+        <div className="text-left hidden xs:block pr-1 sm:pr-3">
+          <p className="text-[10px] sm:text-xs font-bold text-white leading-tight">
             {authUser ? authUser.username : "Entrar / Cadastrar"}
           </p>
-          {authUser && <p className="text-[10px] text-emerald-400 font-mono tracking-widest uppercase mt-0.5">Painel do Jogador</p>}
+          {authUser && <p className="text-[8px] sm:text-[10px] text-emerald-400 font-mono tracking-widest uppercase mt-0.5">Painel</p>}
         </div>
       </motion.button>
 

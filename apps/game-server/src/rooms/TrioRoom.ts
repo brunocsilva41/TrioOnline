@@ -210,6 +210,8 @@ export class TrioRoom extends Room<GameState> {
         for (let i = 0; i < entries.length; i++) {
             const [sid, player] = entries[i];
             player.hand.clear();
+            player.trios.clear();
+            player.score = 0;
             player.handCount = dist.hands[i].length;
             for (let ci = 0; ci < dist.hands[i].length; ci++) {
                 const card = new Card();
@@ -437,40 +439,41 @@ export class TrioRoom extends Room<GameState> {
 
     private handleTrioComplete(activeSid: string, matching: any[]) {
         if (this.turnLocked || this.state.status === "finished") return;
+        
         const ap = this.state.players.get(activeSid);
-        const pName = ap ? ap.displayName : "Alguém";
+        if (!ap) return;
+        
+        const pName = ap.displayName;
         this.log(`TRIO_COMPLETE:${activeSid}:${this.turnMatchValue}`);
         this.turnLocked = true;
         
-        // Wait a bit before showing the cinematic to let the last card reveal sink in
-        this.clock.setTimeout(() => {
-            if (this.state.status === "finished") {
-                this.turnLocked = false;
-                return;
-            }
-            this.broadcast("TRIO_CINEMATIC", { sid: activeSid, value: this.turnMatchValue, playerName: pName });
-            
-            this.clock.setTimeout(() => {
-                // Safety check: game might have ended during timeout
-                if (this.state.status === "finished") {
-                    this.turnLocked = false;
-                    return;
-                }
+        // Broadcast immediately so players see the event
+        this.broadcast("TRIO_CINEMATIC", { sid: activeSid, value: this.turnMatchValue, playerName: pName });
 
-                this.collectTrio(activeSid, matching);
-                this.turnLocked = false;
-                
-                const ap2 = this.state.players.get(activeSid);
-                if (ap2) {
-                    const has7 = ap2.trios.toArray().some((t: Trio) => t.value === 7);
-                    if (has7) { this.endGame(activeSid, "TRIO_OF_SEVENS"); return; }
-                    if (ap2.trios.length >= TrioRoom.TRIOS_TO_WIN) { this.endGame(activeSid, "THREE_TRIOS"); return; }
+        this.clock.setTimeout(() => {
+            if (this.state.status === "finished") return;
+
+            // Collect and clear turn state BEFORE checking win conditions
+            this.collectTrio(activeSid, matching);
+            this.turnRevealedCards = [];
+            this.turnMatchValue = null;
+            this.turnLocked = false;
+            
+            const ap2 = this.state.players.get(activeSid);
+            if (ap2) {
+                const has7 = ap2.trios.toArray().some((t: Trio) => t.value === 7);
+                if (has7) { 
+                    this.endGame(activeSid, "TRIO_OF_SEVENS"); 
+                    return; 
                 }
-                this.turnRevealedCards = [];
-                this.turnMatchValue = null;
-                this.advanceTurn();
-            }, 3500); // Cinematic duration
-        }, 1200); // Discovery pause
+                if (ap2.trios.length >= TrioRoom.TRIOS_TO_WIN) { 
+                    this.endGame(activeSid, "THREE_TRIOS"); 
+                    return; 
+                }
+            }
+            
+            this.advanceTurn();
+        }, 4000); // Wait for cinematic + discovery
     }
 
     private processReveal(activeSid: string, cardId: number, value: number, source: "table" | "hand", ownerSid: string, tableIdx: number) {
