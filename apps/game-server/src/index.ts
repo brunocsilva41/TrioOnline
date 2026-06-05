@@ -286,4 +286,7 @@ gameServer.define("trio_room", TrioRoom).enableRealtimeListing();
 
 httpServer.listen(port, "0.0.0.0", () => {
     console.log(`[Trinity] Server listening on port ${port} (0.0.0.0)`);
+    if (process.send) {
+        process.send("ready");
+    }
 });

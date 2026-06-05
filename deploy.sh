@@ -26,13 +26,17 @@ echo "🗄️ Updating database schema..."
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/trinity?schema=public" pnpm --filter db exec prisma db push
 
 # 4. Build with RAM optimization
-echo "🏗️ Building project (this might take a few minutes)..."
-export NODE_OPTIONS="--max-old-space-size=800"
+echo "🏗️ Cleaning old builds and building project..."
+rm -rf apps/game-client/.next
+rm -rf apps/game-server/dist
+export NODE_OPTIONS="--max-old-space-size=1024"
 pnpm run build
 
 # 5. Restart services with PM2
 echo "🔄 Restarting services..."
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/trinity?schema=public" pm2 start ecosystem.config.js --update-env
+# Use delete and start for a clean environment and to fix "failed to kill" issues
+pm2 delete all || true
+pm2 start ecosystem.config.js
 pm2 save
 
 echo "✅ Deployment completed successfully!"
