@@ -12,7 +12,7 @@ services:
       repo: brunocsilva41/TrioOnline
     source_dir: .
     build_command: pnpm install && pnpm --filter @trinity/core-engine build && pnpm --filter game-server build
-    run_command: pnpm --filter game-server start
+    run_command: pnpm --filter game-server exec node dist/index.js
     http_port: 2567
     instance_count: 1
     instance_size_slug: basic-xxs
