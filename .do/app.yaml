@@ -11,7 +11,6 @@ services:
       deploy_on_push: true
       repo: brunocsilva41/TrioOnline
     source_dir: .
-    build_command: pnpm install && pnpm --filter @trinity/core-engine build && pnpm --filter game-server build
     run_command: node start.js
     http_port: 8080
     instance_count: 1
