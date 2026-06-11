@@ -16,13 +16,20 @@ services:
     http_port: 2567
     instance_count: 1
     instance_size_slug: basic-xxs
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 10
+      period_seconds: 30
+      timeout_seconds: 5
+      healthy_threshold: 2
+      unhealthy_threshold: 5
     envs:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        value: postgresql://postgres:postgres@localhost:5432/trinity?schema=public
+        value: ""
       - key: REDIS_URL
-        value: redis://127.0.0.1:6379
+        value: ""
 
   - name: trio-client
     github:
@@ -31,10 +38,17 @@ services:
       repo: brunocsilva41/TrioOnline
     source_dir: .
     build_command: pnpm install && pnpm --filter game-client build
-    run_command: pnpm --filter game-client start
+    run_command: npx next start
     http_port: 3000
     instance_count: 1
     instance_size_slug: basic-xxs
+    health_check:
+      http_path: /
+      initial_delay_seconds: 15
+      period_seconds: 30
+      timeout_seconds: 5
+      healthy_threshold: 2
+      unhealthy_threshold: 5
     envs:
       - key: NODE_ENV
         value: production

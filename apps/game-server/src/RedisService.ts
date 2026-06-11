@@ -6,30 +6,45 @@ import Redis from "ioredis";
  * Centralized Redis connection and caching logic.
  * Used for Leaderboards, Presence, and scaling.
  */
-const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
+const REDIS_URL = process.env.REDIS_URL || "";
 
 let connectionAttempts = 0;
 
-export const redis = new Redis(REDIS_URL, {
-    maxRetriesPerRequest: 1, 
-    retryStrategy: (times) => {
-        const delay = Math.min(times * 500, 10000);
-        return delay;
-    },
-});
+function createNoopRedis(): Partial<Redis> {
+    const noop = () => Promise.resolve(null);
+    return {
+        set: noop as any,
+        get: noop as any,
+        del: noop as any,
+        on: (() => {}) as any,
+        status: "close" as any,
+        disconnect: (() => {}) as any,
+    };
+}
 
-redis.on("error", (err) => {
-    connectionAttempts++;
-    // Only log every 5 attempts to avoid console spam during startup/local dev
-    if (connectionAttempts % 5 === 1) {
-        console.warn(`[Redis] Connection attempt failed: ${err.message || 'Check if Redis is running'}`);
-    }
-});
+export const redis: Redis = REDIS_URL
+    ? new Redis(REDIS_URL, {
+        maxRetriesPerRequest: 1,
+        retryStrategy: (times) => {
+            const delay = Math.min(times * 500, 10000);
+            return delay;
+        },
+    })
+    : (createNoopRedis() as Redis);
 
-redis.on("connect", () => {
-    console.log("[Redis] Connected successfully to:", REDIS_URL);
-    connectionAttempts = 0;
-});
+if (REDIS_URL) {
+    redis.on("error", (err) => {
+        connectionAttempts++;
+        if (connectionAttempts % 5 === 1) {
+            console.warn(`[Redis] Connection attempt failed: ${err.message || 'Check if Redis is running'}`);
+        }
+    });
+
+    redis.on("connect", () => {
+        console.log("[Redis] Connected successfully to:", REDIS_URL);
+        connectionAttempts = 0;
+    });
+}
 
 export class RedisService {
     /**
