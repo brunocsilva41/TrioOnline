@@ -1,0 +1,42 @@
+alerts:
+  - rule: DEPLOYMENT_FAILED
+
+features:
+  - buildpack-stack=ubuntu-22
+
+services:
+  - name: trio-server
+    github:
+      branch: sobe-nova-visu-a-pedido-dos-fans
+      deploy_on_push: true
+      repo: brunocsilva41/TrioOnline
+    source_dir: .
+    build_command: pnpm install && pnpm --filter game-server build
+    run_command: pnpm --filter game-server start
+    http_port: 2567
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: postgresql://postgres:postgres@localhost:5432/trinity?schema=public
+      - key: REDIS_URL
+        value: redis://127.0.0.1:6379
+
+  - name: trio-client
+    github:
+      branch: sobe-nova-visu-a-pedido-dos-fans
+      deploy_on_push: true
+      repo: brunocsilva41/TrioOnline
+    source_dir: .
+    build_command: pnpm install && pnpm --filter game-client build
+    run_command: pnpm --filter game-client start
+    http_port: 3000
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_GAME_SERVER_URL
+        value: wss://api.triodagalera.codes
