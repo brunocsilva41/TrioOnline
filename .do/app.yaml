@@ -7,7 +7,15 @@ services:
       branch: sobe-nova-visu-a-pedido-dos-fans
       deploy_on_push: true
       repo: brunocsilva41/TrioOnline
-    run_command: node start.js
-    http_port: 8080
+    build_command: pnpm install && pnpm --filter db exec prisma generate && pnpm --filter @trinity/core-engine build && pnpm --filter game-server build
+    run_command: node apps/game-server/start.js
+    http_port: 2567
     instance_count: 1
     instance_size_slug: basic-xxs
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: ""
+      - key: REDIS_URL
+        value: ""
