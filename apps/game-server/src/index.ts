@@ -17,9 +17,7 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 process.on("uncaughtException", (error) => {
-    console.error("[Fatal] Uncaught Exception:", error);
-    // Give some time for logs to be sent
-    setTimeout(() => process.exit(1), 1000);
+    console.error("[Fatal] Uncaught Exception:", error.message, error.stack);
 });
 
 const port = Number(process.env.PORT || 2567);
