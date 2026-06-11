@@ -12,12 +12,12 @@ services:
       repo: brunocsilva41/TrioOnline
     source_dir: .
     build_command: pnpm install && pnpm --filter @trinity/core-engine build && pnpm --filter game-server build
-    run_command: node apps/game-server/start.js
-    http_port: 2567
+    run_command: node start.js
+    http_port: 8080
     instance_count: 1
     instance_size_slug: basic-xxs
     health_check:
-      http_path: /health
+      http_path: /
       initial_delay_seconds: 10
       period_seconds: 30
       timeout_seconds: 5
