@@ -7,24 +7,27 @@ Este documento indexa todos os agentes especializados instanciados fisicamente n
 - **Workflow Protocol** (`/orchestration/workflow.md`): As leis de handoff e pipeline robótico.
 
 ## 🛠️ CORE ENGINEERING
+- **Project Orchestrator Agent** (`/orchestration/project_orchestrator_agent.md`): O Diretor de Produção e gargalo de qualidade.
+- **Core Engine Specialist** (`/core/core_engine_agent.md`): O guardião do determinismo e das 5 leis.
 - **Backend Architect Agent** (`/backend/backend_architect_agent.md`): Dono do Colyseus, State Machine e Node.js Performance.
 - **Frontend Architect Agent** (`/frontend/frontend_architect_agent.md`): Dono do Next.js, Zustand e React Render Optimization.
-- **Multiplayer Network Agent** (`/core/multiplayer_network_agent.md`): Dono do Payload Binário, WebSocket Handshake e Latency Compensation.
-- **Database Architect Agent** (Mapped via pipeline DB failover): Dono do Postgres, Prisma e Redis Sharding.
+- **Multiplayer Network Agent** (`/core/multiplayer_network_agent.md`): Dono do Payload Binário e WebSocket.
+- **Database Architect Agent** (`/db/database_architect_agent.md`): Dono do Postgres, Prisma e Performance de Query.
 
 ## 🛡️ STABILITY & SECURITY
-- **SRE / Reliability Agent** (`/sre/reliability_sre_agent.md`): O mantenedor dos Five Nines (99.999% uptime). Dono do K8s e NGINX Ingress.
-- **Security Agent** (`/security/security_agent.md`): O Paranoico. Previne CSWSH, injeções e vazamentos de JWT.
-- **Anti-Cheat Agent** (`/security/anti_cheat_agent.md`): Dono do Client Ignorance Pattern e detecção de APM anômalo.
-- **Edge Case Agent** (Mapped via Edge Case Bible): O descobridor de falhas.
+- **DevOps & Infrastructure Agent** (`/infra/devops_agent.md`): Dono do K8s, Docker e CI/CD.
+- **SRE / Reliability Agent** (`/sre/reliability_sre_agent.md`): O mantenedor dos Five Nines.
+- **Security Agent** (`/security/security_agent.md`): Prevenção de ataques e segurança de dados.
+- **Anti-Cheat Agent** (`/security/anti_cheat_agent.md`): Detecção de trapaças e Client Ignorance.
 
 ## 🧪 QUALITY ASSURANCE
-- **QA Master Agent** (`/core/qa_master_agent.md`): O SDET. Dono da malha de testes e aprovação de PR.
-- **E2E Testing Agent** (`/qa/e2e_testing_agent.md`): O operador de Playwright e injetor de Chaos (Network Throttle).
+- **QA Master Agent** (`/core/qa_master_agent.md`): O SDET. Dono da malha de testes.
+- **E2E Testing Agent** (`/qa/e2e_testing_agent.md`): Operador de Playwright.
 
 ## 🎨 USER EXPERIENCE & AESTHETICS
-- **UX Psychology Agent** (`/ux/ux_psychology_agent.md`): Dono da Dopamine Timing Matrix e retenção cognitiva.
-- **Animation / VFX Agent** (`/frontend/animation_vfx_agent.md`): Dono do Framer Motion, Shaders, e WebGL (Zero DOM reflows).
+- **Game Design & Balance Agent** (`/game_design/game_design_agent.md`): Dono da matemática do jogo e diversão.
+- **UX Psychology Agent** (`/ux/ux_psychology_agent.md`): Retenção e psicologia cognitiva.
+- **Animation / VFX Agent** (`/frontend/animation_vfx_agent.md`): Framer Motion e Shaders.
 
 ## 📈 BUSINESS & LIVE OPERATIONS
 - **Retention Agent** (`/business/retention_agent.md`): O lutador contra o Churn Rate. Desenha o Daily Loop.
