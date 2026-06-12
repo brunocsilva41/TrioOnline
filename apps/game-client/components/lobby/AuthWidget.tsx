@@ -36,7 +36,7 @@ export default function AuthWidget() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch(`${HTTP_URL}/api/login`, {
+      const res = await fetch(`${HTTP_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ login: loginInput, password })
@@ -65,7 +65,7 @@ export default function AuthWidget() {
 
       if (!payload.username) throw new Error("Nome de usuário é obrigatório");
 
-      const res = await fetch(`${HTTP_URL}/api/register`, {
+      const res = await fetch(`${HTTP_URL}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -95,7 +95,7 @@ export default function AuthWidget() {
       localStorage.setItem("trinity_auth", JSON.stringify(updatedUser));
       
       // In a real app, we would also POST to /api/profile/avatar
-      // fetch(`${HTTP_URL}/api/profile/avatar`, { ... })
+      // fetch(`${HTTP_URL}/profile/avatar`, { ... })
     } catch (err) {
       console.error("Avatar upload failed:", err);
       setError("Erro ao processar imagem");

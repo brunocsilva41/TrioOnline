@@ -23,6 +23,9 @@ services:
       timeout_seconds: 5
       healthy_threshold: 2
       unhealthy_threshold: 5
+    routes:
+      - path: /api
+      - path: /health
     envs:
       - key: NODE_ENV
         value: production
@@ -53,4 +56,4 @@ services:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_GAME_SERVER_URL
-        value: wss://api.triodagalera.codes
+        value: wss://triodagalera.codes/api

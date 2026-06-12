@@ -29,7 +29,7 @@ export default function LeaderboardWidget() {
 
     const fetchLeaderboard = async () => {
       try {
-        const res = await fetch(`${SERVER_ENDPOINTS.httpUrl}/api/leaderboard`);
+        const res = await fetch(`${SERVER_ENDPOINTS.httpUrl}/leaderboard`);
         if (!res.ok) throw new Error("API error");
         const data = await res.json();
         if (disposed) return;
