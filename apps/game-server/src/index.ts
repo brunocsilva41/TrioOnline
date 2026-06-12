@@ -66,7 +66,7 @@ app.use(express.json());
 // Request logging
 app.use((req, res, next) => {
     // Skip logging for frequent background checks to keep console clean
-    if (req.url === "/health" || req.url === "/api/leaderboard") {
+    if (req.url === "/health" || req.url === "/leaderboard") {
         return next();
     }
     console.log(`[Trinity] ${req.method} ${req.url} - ${req.ip}`);
@@ -80,7 +80,7 @@ app.get("/", (req, res) => {
 
 // === AUTH & PROFILE ROUTES ===
 
-app.post("/api/register", async (req, res) => {
+app.post("/register", async (req, res) => {
     if (!requireDatabase(res)) return;
     try {
         const { username, email, password } = req.body;
@@ -111,7 +111,7 @@ app.post("/api/register", async (req, res) => {
     }
 });
 
-app.post("/api/login", async (req, res) => {
+app.post("/login", async (req, res) => {
     if (!requireDatabase(res)) return;
     try {
         const { login, password } = req.body; // login can be email or username
@@ -136,7 +136,7 @@ app.post("/api/login", async (req, res) => {
     }
 });
 
-app.get("/api/leaderboard", async (req, res) => {
+app.get("/leaderboard", async (req, res) => {
     if (!databaseConfigured) {
         return res.json({ leaderboard: [], database: "unconfigured" });
     }
@@ -168,7 +168,7 @@ app.get("/api/leaderboard", async (req, res) => {
     }
 });
 
-app.get("/api/profile/:id", async (req, res) => {
+app.get("/profile/:id", async (req, res) => {
     if (!requireDatabase(res)) return;
     try {
         const user = await prisma.user.findUnique({ where: { id: req.params.id } });
@@ -179,7 +179,7 @@ app.get("/api/profile/:id", async (req, res) => {
     }
 });
 
-app.post("/api/profile/update", async (req, res) => {
+app.post("/profile/update", async (req, res) => {
     if (!requireDatabase(res)) return;
     try {
         const { id, currentPassword, newUsername, newPassword } = req.body;
