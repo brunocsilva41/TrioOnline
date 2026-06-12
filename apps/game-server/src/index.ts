@@ -66,16 +66,66 @@ app.use(express.json());
 // Request logging
 app.use((req, res, next) => {
     // Skip logging for frequent background checks to keep console clean
-    if (req.url === "/health" || req.url === "/leaderboard") {
+    if (req.url === "/" || req.url === "/health" || req.url === "/leaderboard") {
         return next();
     }
-    console.log(`[Trinity] ${req.method} ${req.url} - ${req.ip}`);
+    const start = Date.now();
+    res.on("finish", () => {
+        console.log(`[Trinity] ${req.method} ${req.url} → ${res.statusCode} (${Date.now() - start}ms) - ${req.ip}`);
+    });
     next();
 });
 
-// Add a root endpoint for basic health check
-app.get("/", (req, res) => {
-    res.json({ message: "Trinity Game Server is running", timestamp: new Date().toISOString() });
+// Root endpoint — DO strips /health → /, so this handles health probes
+app.get("/", async (_req, res) => {
+    let dbStatus = "ok";
+    if (!databaseConfigured) {
+        dbStatus = "unconfigured";
+    } else {
+        try {
+            const dbCheck = prisma.$queryRaw`SELECT 1`;
+            const timeout = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Database timeout")), 3000)
+            );
+            await Promise.race([dbCheck, timeout]);
+        } catch (e) {
+            dbStatus = "error";
+            console.warn(`[Health] Database issue: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    }
+    res.json({
+        status: "ok",
+        uptime: process.uptime(),
+        database: dbStatus,
+        version: "1.0.1",
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Alias for local dev (never hit on DO — stripped to /)
+app.get("/health", async (_req, res) => {
+    let dbStatus = "ok";
+    if (!databaseConfigured) {
+        dbStatus = "unconfigured";
+    } else {
+        try {
+            const dbCheck = prisma.$queryRaw`SELECT 1`;
+            const timeout = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Database timeout")), 3000)
+            );
+            await Promise.race([dbCheck, timeout]);
+        } catch (e) {
+            dbStatus = "error";
+            console.warn(`[Health] Database issue: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    }
+    res.json({
+        status: "ok",
+        uptime: process.uptime(),
+        database: dbStatus,
+        version: "1.0.1",
+        timestamp: new Date().toISOString()
+    });
 });
 
 // === AUTH & PROFILE ROUTES ===
@@ -210,33 +260,6 @@ app.post("/profile/update", async (req, res) => {
         logDatabaseError("API Profile update", e);
         res.status(500).json({ error: "Server error updating profile" });
     }
-});
-
-// Health check with timeout to prevent hanging on Render
-app.get("/health", async (_req, res) => {
-    let dbStatus = "ok";
-    if (!databaseConfigured) {
-        dbStatus = "unconfigured";
-    } else {
-        try {
-            // Add a timeout to the DB check
-            const dbCheck = prisma.$queryRaw`SELECT 1`;
-            const timeout = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error("Database timeout")), 3000)
-            );
-            await Promise.race([dbCheck, timeout]);
-        } catch (e) {
-            dbStatus = "error";
-            console.warn(`[Health Check] Database issue: ${e instanceof Error ? e.message : String(e)}`);
-        }
-    }
-    res.json({ 
-        status: "ok", 
-        uptime: process.uptime(), 
-        database: dbStatus,
-        version: "1.0.1",
-        timestamp: new Date().toISOString()
-    });
 });
 
 // Room listing
