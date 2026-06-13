@@ -107,13 +107,13 @@ export default function LeaderboardWidget() {
             >
               <div className="p-4 sm:p-8">
                 {/* Table Header Labels */}
-                <div className="grid grid-cols-[0.8fr_3.5fr_1fr_1fr_1fr] gap-4 px-8 py-4 mb-4 bg-white/[0.02] rounded-2xl border border-white/5 relative overflow-hidden group">
-                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:animate-shimmer" style={{ animationDuration: '2s' }} />
-                   <span className="text-[10px] font-black font-display text-white/60 uppercase text-center tracking-widest">#</span>
-                   <span className="text-[10px] font-black font-display text-white/60 uppercase tracking-[0.2em]">Jogador</span>
-                   <span className="text-[10px] font-black font-display text-white/60 uppercase text-center tracking-widest">Part</span>
-                   <span className="text-[10px] font-black font-display text-white/60 uppercase text-center tracking-widest">Vits</span>
-                   <span className="text-[10px] font-black font-display text-white/60 uppercase text-center tracking-widest">Trios</span>
+                <div className="grid grid-cols-[0.8fr_3.5fr_1fr_1fr_1fr] gap-0 px-8 py-4 mb-4 bg-white/[0.02] rounded-2xl border border-white/5 relative overflow-hidden group items-center mr-3">
+                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:animate-shimmer pointer-events-none" style={{ animationDuration: '2s' }} />
+                   <span className="relative z-10 text-[10px] font-black font-display text-white/60 uppercase text-center tracking-widest">#</span>
+                   <span className="relative z-10 text-[10px] font-black font-display text-white/60 uppercase tracking-[0.2em] pl-4">Jogador</span>
+                   <span className="relative z-10 text-[10px] font-black font-display text-white/60 uppercase text-center tracking-widest border-l border-white/10 py-1 cursor-help hover:text-white transition-colors animate-fade-in" title="Partidas Jogadas">PART</span>
+                   <span className="relative z-10 text-[10px] font-black font-display text-white/60 uppercase text-center tracking-widest border-l border-white/10 py-1 cursor-help hover:text-white transition-colors animate-fade-in" title="Vitórias">VITS</span>
+                   <span className="relative z-10 text-[10px] font-black font-display text-white/60 uppercase text-center tracking-widest border-l border-white/10 py-1">Trios</span>
                 </div>
 
                 <div className="space-y-3 max-h-[480px] overflow-y-auto pr-3 custom-scroll">
@@ -187,7 +187,7 @@ function LeaderboardRow({ entry, rank }: { entry: LeaderboardEntry, rank: number
         duration: 0.3,
         whileHover: { duration: 0.2 }
       }}
-      className={`group grid grid-cols-[0.8fr_3.5fr_1fr_1fr_1fr] gap-4 items-center px-7 py-5 rounded-[2rem] border transition-all duration-300 relative overflow-hidden pointer-events-auto
+      className={`group grid grid-cols-[0.8fr_3.5fr_1fr_1fr_1fr] gap-0 items-center px-8 py-5 rounded-[2rem] border transition-all duration-300 relative overflow-hidden pointer-events-auto
         ${isTopThree ? `${currentStyle?.bg} ${currentStyle?.border} ${currentStyle?.glow}` : "bg-white/[0.01] border-white/5 hover:border-white/10"}
       `}
     >
@@ -200,15 +200,15 @@ function LeaderboardRow({ entry, rank }: { entry: LeaderboardEntry, rank: number
       <div className="flex justify-center items-center">
         {rank === 1 ? (
           <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center shadow-[0_8px_20px_rgba(245,158,11,0.4)] rotate-[-4deg] group-hover:rotate-0 transition-transform">
-             <Crown className="text-black" size={20} fill="black" />
+             <Crown className="text-black" size={15} fill="black" />
           </div>
         ) : rank === 2 ? (
           <div className="w-9 h-9 rounded-xl bg-slate-300 flex items-center justify-center shadow-[0_8px_20px_rgba(203,213,225,0.3)]">
-             <Award className="text-black" size={18} fill="black" />
+             <Award className="text-black" size={16} fill="black" />
           </div>
         ) : rank === 3 ? (
           <div className="w-9 h-9 rounded-xl bg-amber-700 flex items-center justify-center shadow-[0_8px_20px_rgba(180,83,9,0.3)]">
-             <Star className="text-black" size={18} fill="black" />
+             <Star className="text-black" size={16} fill="black" />
           </div>
         ) : (
           <span className="text-sm font-black font-display text-white/10 group-hover:text-white/30 transition-colors tracking-tighter">
@@ -218,7 +218,7 @@ function LeaderboardRow({ entry, rank }: { entry: LeaderboardEntry, rank: number
       </div>
 
       {/* Player Identity */}
-      <div className="flex items-center gap-5 truncate">
+      <div className="flex items-center gap-5 truncate pl-4" title={entry.username}>
         <div className="relative flex-shrink-0">
           <div className={`p-0.5 rounded-2xl ${isTopThree ? 'bg-gradient-to-br from-white/30 to-transparent' : 'bg-white/5'}`}>
             <div className="rounded-[0.9rem] overflow-hidden border border-white/10 bg-slate-950 shadow-inner">
@@ -234,21 +234,26 @@ function LeaderboardRow({ entry, rank }: { entry: LeaderboardEntry, rank: number
           )}
         </div>
         <span className={`text-lg font-bold font-display truncate tracking-tight transition-colors antialiased ${isTopThree ? 'text-white' : 'text-white/90 group-hover:text-white'}`}>
-          {entry.username}
+          {entry.username.trim().split(" ")[0]}
         </span>
       </div>
 
       {/* Stats Columns */}
-      <span className="text-xs font-black font-display text-white/40 text-center group-hover:text-white/70 transition-colors tabular-nums">{entry.total_matches}</span>
+      <div className="flex justify-center items-center w-full border-l border-white/5 group-hover:border-white/10 h-10" title="Partidas Jogadas">
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all ${isTopThree ? 'bg-white/5' : 'bg-white/[0.02] border border-white/5 group-hover:border-white/20'}`}>
+           <Target size={14} className="text-white/30 group-hover:text-emerald-400/80 transition-colors" />
+           <span className="text-xs font-black font-display text-white/40 group-hover:text-white transition-colors tabular-nums">{entry.total_matches}</span>
+        </div>
+      </div>
       
-      <div className="flex justify-center">
+      <div className="flex justify-center items-center w-full border-l border-white/5 group-hover:border-white/10 h-10" title="Vitórias">
         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all ${isTopThree ? 'bg-white/5' : 'bg-emerald-500/[0.03] border border-emerald-500/5 group-hover:border-emerald-500/20'}`}>
            <Flame size={14} className={rank === 1 ? "text-amber-400" : "text-emerald-400"} />
            <span className={`text-xs font-black font-display tabular-nums ${rank === 1 ? "text-amber-400" : "text-emerald-400"}`}>{entry.total_wins}</span>
         </div>
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center items-center w-full border-l border-white/5 group-hover:border-white/10 h-10">
         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all ${isTopThree ? 'bg-white/5' : 'bg-white/[0.02] border border-white/5 group-hover:border-white/20'}`}>
            <Zap size={14} className="text-white/20 group-hover:text-blue-400 transition-colors" />
            <span className="text-xs font-black font-display text-white/40 group-hover:text-white transition-colors tabular-nums">{entry.total_trios}</span>
