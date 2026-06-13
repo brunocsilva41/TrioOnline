@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { Trophy, ArrowLeft, ArrowRight, MousePointer2, Layers, Binary, HelpCircle, User, ShieldCheck, Search } from 'lucide-react';
 import CardImage from '../CardImage';
+import { useGameStore } from '../../store/useGameStore';
 
 /**
  * PROJECT TRINITY - Interactive Tutorial Screen
@@ -22,6 +23,7 @@ interface Step {
 
 export default function TutorialScreen() {
   const [currentStep, setCurrentStep] = useState(0);
+  const setShowTutorial = useGameStore((s) => s.setShowTutorial);
 
   const steps: Step[] = [
     {
@@ -197,15 +199,14 @@ export default function TutorialScreen() {
           </div>
         </div>
         
-        <Link href="/">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-6 py-3 bg-white/5 border border-white/10 rounded-full text-[10px] font-black tracking-widest uppercase transition-all hover:bg-white/10"
-          >
-            Sair do Tutorial
-          </motion.button>
-        </Link>
+        <motion.button
+          onClick={() => setShowTutorial(false)}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="px-6 py-3 bg-white/5 border border-white/10 rounded-full text-[10px] font-black tracking-widest uppercase transition-all hover:bg-white/10"
+        >
+          Sair do Tutorial
+        </motion.button>
       </header>
 
       {/* Main Content */}
@@ -265,13 +266,12 @@ export default function TutorialScreen() {
                   Próximo <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                 </button>
               ) : (
-                <Link href="/">
-                  <button
-                    className="px-8 h-12 rounded-full bg-emerald-500 text-black font-black text-xs tracking-widest uppercase hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] transition-all flex items-center gap-2"
-                  >
-                    Estou Pronto!
-                  </button>
-                </Link>
+                <button
+                  onClick={() => setShowTutorial(false)}
+                  className="px-8 h-12 rounded-full bg-emerald-500 text-black font-black text-xs tracking-widest uppercase hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] transition-all flex items-center gap-2"
+                >
+                  Estou Pronto!
+                </button>
               )}
             </div>
           </div>

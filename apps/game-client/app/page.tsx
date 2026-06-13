@@ -81,12 +81,6 @@ export default function Home() {
               className="fixed inset-0 z-[150] bg-[#020617]"
             >
               <TutorialScreen />
-              <button
-                onClick={() => setShowTutorial(false)}
-                className="fixed top-8 right-8 z-[160] px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full text-[10px] font-black tracking-widest uppercase transition-all"
-              >
-                Voltar ao Jogo
-              </button>
             </motion.div>
           )}
         </AnimatePresence>
